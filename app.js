@@ -146,6 +146,72 @@ function handleFileUpload(event) {
     reader.readAsArrayBuffer(file);
 }
 
+// Make table sortable by clicking column headers
+function makeSortable(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const headers = table.querySelectorAll('th.sortable');
+
+    headers.forEach((header, columnIndex) => {
+        let currentSort = null; // null, 'asc', or 'desc'
+
+        header.addEventListener('click', () => {
+            // Toggle sort direction
+            if (currentSort === 'asc') {
+                currentSort = 'desc';
+            } else if (currentSort === 'desc') {
+                currentSort = 'asc';
+            } else {
+                currentSort = 'asc';
+            }
+
+            // Remove sort classes from all headers
+            headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+
+            // Add sort class to clicked header
+            header.classList.add(currentSort === 'asc' ? 'sort-asc' : 'sort-desc');
+
+            // Sort the table
+            sortTable(table, columnIndex, currentSort);
+        });
+    });
+}
+
+// Sort table by column index
+function sortTable(table, columnIndex, direction) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        const aCell = a.children[columnIndex];
+        const bCell = b.children[columnIndex];
+
+        // Use data-value if available, otherwise use text content
+        let aValue = aCell.dataset.value !== undefined ? aCell.dataset.value : aCell.textContent.trim();
+        let bValue = bCell.dataset.value !== undefined ? bCell.dataset.value : bCell.textContent.trim();
+
+        // Try to parse as numbers
+        const aNum = parseFloat(aValue.replace(/[£,]/g, ''));
+        const bNum = parseFloat(bValue.replace(/[£,]/g, ''));
+
+        // Compare as numbers if both are valid numbers
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+            return direction === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+
+        // Otherwise compare as strings
+        if (direction === 'asc') {
+            return aValue.localeCompare(bValue);
+        } else {
+            return bValue.localeCompare(aValue);
+        }
+    });
+
+    // Re-append rows in sorted order
+    rows.forEach(row => tbody.appendChild(row));
+}
+
 // Parse amount/balance values - handles £ symbols, commas, and whitespace
 function parseAmount(amountStr) {
     if (!amountStr) return 0;
@@ -815,12 +881,17 @@ function updateHoldingsTable() {
             ? `${acc.Interest_Rate.toFixed(2)}% ${acc.Rate_Type || ''}`
             : '';
 
+        const lastUpdated = acc.Date
+            ? acc.Date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
+            : '';
+
         row.innerHTML = `
             <td>${acc.Account_Name}</td>
-            <td>${formatCurrency(acc.Balance)}</td>
+            <td data-value="${acc.Balance}">${formatCurrency(acc.Balance)}</td>
             <td>${acc.Currency}</td>
-            <td>£${formatCurrency(gbpValue)}</td>
-            <td>${interestDisplay}</td>
+            <td data-value="${gbpValue}">£${formatCurrency(gbpValue)}</td>
+            <td data-value="${acc.Interest_Rate || 0}">${interestDisplay}</td>
+            <td data-value="${acc.Date ? acc.Date.getTime() : 0}">${lastUpdated}</td>
         `;
 
         tbody.appendChild(row);
@@ -929,7 +1000,16 @@ function calculateForecast() {
     const accountForecasts = current.map(acc => {
         const principal = convertToGBP(acc.Balance, acc.Currency);
         const annualRate = acc.Interest_Rate / 100;
-        const monthlyRate = annualRate / 12;
+
+        // Calculate monthly rate based on rate type
+        let monthlyRate;
+        if (acc.Rate_Type === 'AER') {
+            // AER already accounts for compounding - convert to monthly equivalent
+            monthlyRate = Math.pow(1 + annualRate, 1/12) - 1;
+        } else {
+            // Gross and PA - use simple division (nominal rate compounded monthly)
+            monthlyRate = annualRate / 12;
+        }
 
         // Compound interest formula: FV = PV * (1 + r)^n
         let futureValue = principal * Math.pow(1 + monthlyRate, months);
@@ -981,10 +1061,10 @@ function updateForecast() {
     forecasts.forEach(f => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${f.name}</td>
-            <td>£${formatCurrency(f.current)}</td>
-            <td>£${formatCurrency(f.projected)}</td>
-            <td class="${f.growth >= 0 ? 'positive-growth' : 'negative-growth'}">
+            <td data-value="${f.name}">${f.name}</td>
+            <td data-value="${f.current}">£${formatCurrency(f.current)}</td>
+            <td data-value="${f.projected}">£${formatCurrency(f.projected)}</td>
+            <td data-value="${f.growth}" class="${f.growth >= 0 ? 'positive-growth' : 'negative-growth'}">
                 £${formatCurrency(Math.abs(f.growth))}
                 ${f.growth >= 0 ? '↑' : '↓'}
             </td>
@@ -1128,4 +1208,8 @@ function setupNetWorthEventListeners() {
     document.getElementById('monthlyContribution').addEventListener('input', () => {
         updateForecast();
     });
+
+    // Make tables sortable
+    makeSortable('holdingsTable');
+    makeSortable('forecastTable');
 }

@@ -16,7 +16,10 @@
         <div class="data-source-banner" id="dataSourceBanner">
             <div class="data-source-info">
                 <span class="data-source-icon">📊</span>
-                <span class="data-source-text" id="dataSourceText">Using dummy data</span>
+                <div>
+                    <span class="data-source-text" id="dataSourceText">Using dummy data</span>
+                    <div class="privacy-note">🔒 All data stays in your browser - nothing uploaded to the cloud</div>
+                </div>
             </div>
             <div class="upload-controls">
                 <label for="fileUpload" class="upload-btn">
@@ -71,11 +74,12 @@
                     <table class="holdings-table" id="holdingsTable">
                         <thead>
                             <tr>
-                                <th>Account Name</th>
-                                <th>Balance</th>
-                                <th>Currency</th>
-                                <th>GBP Equiv.</th>
-                                <th>Interest</th>
+                                <th class="sortable">Account Name</th>
+                                <th class="sortable">Balance</th>
+                                <th class="sortable">Currency</th>
+                                <th class="sortable">GBP Equiv.</th>
+                                <th class="sortable">Interest</th>
+                                <th class="sortable">Last Updated</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -147,10 +151,10 @@
                                 <table class="forecast-table" id="forecastTable">
                                     <thead>
                                         <tr>
-                                            <th>Account</th>
-                                            <th>Current</th>
-                                            <th>Projected</th>
-                                            <th>Growth</th>
+                                            <th class="sortable">Account</th>
+                                            <th class="sortable">Current</th>
+                                            <th class="sortable">Projected</th>
+                                            <th class="sortable">Growth</th>
                                         </tr>
                                     </thead>
                                     <tbody>
