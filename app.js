@@ -77,8 +77,12 @@ function parseDate(dateStr) {
 
 // Initialize dashboard after data is loaded
 function initializeDashboard() {
-    // Get unique categories from categories.csv file
-    const uniqueCategories = [...new Set(categories.map(c => c.Category))].filter(cat => cat);
+    // Get unique categories from BOTH transactions AND categories.csv
+    const categoriesFromCSV = [...new Set(categories.map(c => c.Category))].filter(cat => cat);
+    const categoriesFromTransactions = [...new Set(transactions.map(t => t.Category))].filter(cat => cat);
+
+    // Merge and deduplicate both sources
+    const uniqueCategories = [...new Set([...categoriesFromCSV, ...categoriesFromTransactions])].sort();
 
     // Initialize all categories as selected except Transfers
     uniqueCategories.forEach(cat => {
@@ -152,11 +156,14 @@ function setupEventListeners() {
         const allChecked = selectedCategories.size > 0;
 
         if (allChecked) {
+            // Deselect all
             selectedCategories.clear();
             document.getElementById('toggleAll').textContent = 'Select All';
         } else {
-            const uniqueCategories = [...new Set(transactions.map(t => t.Category))];
-            uniqueCategories.forEach(cat => selectedCategories.add(cat));
+            // Select all - get all visible checkboxes
+            document.querySelectorAll('#categoryCheckboxes input[type="checkbox"]').forEach(cb => {
+                selectedCategories.add(cb.value);
+            });
             document.getElementById('toggleAll').textContent = 'Deselect All';
         }
 
@@ -391,6 +398,7 @@ function updateMonthlyTrendChart(data) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
+            animation: false,
             plugins: {
                 legend: {
                     display: true,
@@ -446,6 +454,7 @@ function updateCategoryPieChart(data) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
+            animation: false,
             plugins: {
                 legend: {
                     display: true,
@@ -498,6 +507,7 @@ function updateCategoryBarChart(data) {
             indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: true,
+            animation: false,
             plugins: {
                 legend: {
                     display: false
