@@ -1,9 +1,12 @@
 // Global variables to store data and charts
 let transactions = [];
 let categories = [];
+let snapshots = [];
 let charts = {};
 let selectedCategories = new Set();
 let currentTimeFilter = 'all';
+let exchangeRates = { AUD: 0.50 }; // Fallback rates
+let forecastMonths = 6; // Default forecast period
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,13 +18,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // Load CSV data
 async function loadData() {
     try {
-        // Load transactions
+        // Fetch exchange rates first
+        await fetchExchangeRates();
+
+        // Load all CSV files
         const transactionsResponse = await fetch('data/transactions.2025.csv');
         const transactionsText = await transactionsResponse.text();
 
-        // Load categories
         const categoriesResponse = await fetch('data/categories.2025.csv');
         const categoriesText = await categoriesResponse.text();
+
+        const snapshotsResponse = await fetch('data/snapshots.csv');
+        const snapshotsText = await snapshotsResponse.text();
 
         // Parse CSVs
         Papa.parse(transactionsText, {
@@ -41,7 +49,24 @@ async function loadData() {
                     skipEmptyLines: true,
                     complete: (results) => {
                         categories = results.data;
-                        initializeDashboard();
+
+                        // Parse snapshots
+                        Papa.parse(snapshotsText, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => {
+                                snapshots = results.data.map(row => ({
+                                    ...row,
+                                    Balance: parseFloat(row.Balance) || 0,
+                                    Interest_Rate: parseFloat(row.Interest_Rate) || 0,
+                                    Date: parseDate(row.Date)
+                                }));
+
+                                // Initialize both dashboards
+                                initializeDashboard();
+                                initializeNetWorth();
+                            }
+                        });
                     }
                 });
             }
@@ -60,8 +85,20 @@ function parseAmount(amountStr) {
     return parseFloat(cleaned) || 0;
 }
 
-// Parse DD-MMM-YY date format
+// Parse date - handles both DD-MMM-YY and DD/MM/YYYY formats
 function parseDate(dateStr) {
+    if (!dateStr) return new Date();
+
+    // Check if it's DD/MM/YYYY format (contains /)
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+        const year = parseInt(parts[2]);
+        return new Date(year, month, day);
+    }
+
+    // Otherwise parse DD-MMM-YY format (contains -)
     const months = {
         'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
         'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
@@ -70,7 +107,7 @@ function parseDate(dateStr) {
     const parts = dateStr.split('-');
     const day = parseInt(parts[0]);
     const month = months[parts[1]];
-    const year = 2000 + parseInt(parts[2]);
+    const year = parts[2].length === 2 ? 2000 + parseInt(parts[2]) : parseInt(parts[2]);
 
     return new Date(year, month, day);
 }
@@ -562,4 +599,437 @@ function updateLastUpdatedTime() {
         minute: '2-digit'
     });
     document.getElementById('lastUpdated').textContent = formatted;
+}
+
+// ========================================
+// NET WORTH & FORECAST FUNCTIONS
+// ========================================
+
+// Fetch exchange rates from API
+async function fetchExchangeRates() {
+    try {
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/GBP');
+        const data = await response.json();
+        if (data && data.rates) {
+            exchangeRates.AUD = 1 / data.rates.AUD; // Convert to GBP from AUD
+        }
+    } catch (error) {
+        console.warn('Failed to fetch exchange rates, using fallback:', error);
+        // Fallback rates already set in global variables
+    }
+}
+
+// Convert foreign currency to GBP
+function convertToGBP(amount, currency) {
+    if (currency === 'GBP') return amount;
+    return amount * (exchangeRates[currency] || 0.50);
+}
+
+// Initialize net worth section
+function initializeNetWorth() {
+    if (snapshots.length === 0) {
+        console.warn('No snapshot data available');
+        return;
+    }
+
+    // Update all sections
+    updateNetWorthSummary();
+    updateHoldingsTable();
+    updateHistoricalChart();
+    updateForecast();
+
+    // Setup event listeners
+    setupNetWorthEventListeners();
+
+    // Set default forecast date (6 months from now)
+    const defaultDate = new Date();
+    defaultDate.setMonth(defaultDate.getMonth() + 6);
+    document.getElementById('forecastDate').valueAsDate = defaultDate;
+}
+
+// Get current snapshot (most recent date for each account)
+function getCurrentSnapshot() {
+    const accountSnapshots = {};
+
+    snapshots.forEach(snap => {
+        const key = snap.Account_Name;
+        if (!accountSnapshots[key] || snap.Date > accountSnapshots[key].Date) {
+            accountSnapshots[key] = snap;
+        }
+    });
+
+    // Filter out closed accounts (Balance = 0)
+    return Object.values(accountSnapshots).filter(acc => acc.Balance > 0);
+}
+
+// Update net worth summary cards
+function updateNetWorthSummary() {
+    const current = getCurrentSnapshot();
+
+    let totalNetWorth = 0;
+    let totalISAs = 0;
+    let totalLiquid = 0;
+    let foreignTotal = 0;
+    let foreignGBP = 0;
+
+    current.forEach(acc => {
+        const gbpValue = convertToGBP(acc.Balance, acc.Currency);
+        totalNetWorth += gbpValue;
+
+        // ISA calculation
+        if (acc.Account_Name.toUpperCase().includes('ISA')) {
+            totalISAs += gbpValue;
+        } else {
+            totalLiquid += gbpValue;
+        }
+
+        // Foreign holdings
+        if (acc.Currency !== 'GBP') {
+            foreignTotal += acc.Balance;
+            foreignGBP += gbpValue;
+        }
+    });
+
+    document.getElementById('totalNetWorth').textContent = `£${formatCurrency(totalNetWorth)}`;
+    document.getElementById('totalISAs').textContent = `£${formatCurrency(totalISAs)}`;
+    document.getElementById('totalLiquid').textContent = `£${formatCurrency(totalLiquid)}`;
+    document.getElementById('foreignHoldings').textContent =
+        `${formatCurrency(foreignTotal)} AUD (£${formatCurrency(foreignGBP)})`;
+}
+
+// Update holdings table
+function updateHoldingsTable() {
+    const current = getCurrentSnapshot();
+
+    // Sort by GBP equivalent (descending)
+    current.sort((a, b) => {
+        const aGBP = convertToGBP(a.Balance, a.Currency);
+        const bGBP = convertToGBP(b.Balance, b.Currency);
+        return bGBP - aGBP;
+    });
+
+    const tbody = document.querySelector('#holdingsTable tbody');
+    tbody.innerHTML = '';
+
+    current.forEach(acc => {
+        const gbpValue = convertToGBP(acc.Balance, acc.Currency);
+        const row = document.createElement('tr');
+
+        const interestDisplay = acc.Interest_Rate
+            ? `${acc.Interest_Rate.toFixed(2)}% ${acc.Rate_Type || ''}`
+            : '';
+
+        row.innerHTML = `
+            <td>${acc.Account_Name}</td>
+            <td>${formatCurrency(acc.Balance)}</td>
+            <td>${acc.Currency}</td>
+            <td>£${formatCurrency(gbpValue)}</td>
+            <td>${interestDisplay}</td>
+        `;
+
+        tbody.appendChild(row);
+    });
+}
+
+// Update historical net worth chart
+function updateHistoricalChart() {
+    // Group snapshots by date and calculate total net worth
+    const dateGroups = {};
+
+    snapshots.forEach(snap => {
+        if (snap.Balance === 0) return; // Skip closed accounts
+
+        const dateKey = snap.Date.toISOString().split('T')[0];
+        if (!dateGroups[dateKey]) {
+            dateGroups[dateKey] = { date: snap.Date, total: 0 };
+        }
+
+        const gbpValue = convertToGBP(snap.Balance, snap.Currency);
+        dateGroups[dateKey].total += gbpValue;
+    });
+
+    // Sort by date
+    const sortedData = Object.values(dateGroups).sort((a, b) => a.date - b.date);
+
+    const labels = sortedData.map(d => d.date.toLocaleDateString('en-GB', {
+        month: 'short',
+        year: '2-digit'
+    }));
+    const data = sortedData.map(d => d.total);
+
+    // Calculate growth stats
+    if (sortedData.length >= 2) {
+        const firstValue = sortedData[0].total;
+        const lastValue = sortedData[sortedData.length - 1].total;
+        const totalGrowth = lastValue - firstValue;
+
+        const firstDate = sortedData[0].date;
+        const lastDate = sortedData[sortedData.length - 1].date;
+        const monthsDiff = (lastDate - firstDate) / (1000 * 60 * 60 * 24 * 30.44);
+        const avgMonthlyGrowth = monthsDiff > 0 ? totalGrowth / monthsDiff : 0;
+
+        document.getElementById('totalGrowth').textContent =
+            `£${formatCurrency(Math.abs(totalGrowth))} ${totalGrowth >= 0 ? 'increase' : 'decrease'}`;
+        document.getElementById('avgMonthlyGrowth').textContent =
+            `£${formatCurrency(Math.abs(avgMonthlyGrowth))}/mo`;
+    }
+
+    // Create chart
+    const ctx = document.getElementById('networthHistoryChart').getContext('2d');
+    if (charts.networthHistory) {
+        charts.networthHistory.destroy();
+    }
+
+    charts.networthHistory = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Net Worth (GBP)',
+                data: data,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `£${formatCurrency(context.parsed.y)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '£' + (value / 1000).toFixed(0) + 'k';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Calculate forecast with compound interest
+function calculateForecast() {
+    const current = getCurrentSnapshot();
+    const months = forecastMonths;
+    const monthlyContribution = parseFloat(document.getElementById('monthlyContribution').value) || 0;
+
+    const accountForecasts = current.map(acc => {
+        const principal = convertToGBP(acc.Balance, acc.Currency);
+        const annualRate = acc.Interest_Rate / 100;
+        const monthlyRate = annualRate / 12;
+
+        // Compound interest formula: FV = PV * (1 + r)^n
+        let futureValue = principal * Math.pow(1 + monthlyRate, months);
+
+        // Add monthly contributions (simplified: added at end of each month)
+        if (monthlyContribution > 0) {
+            // Distribute contribution across accounts proportionally
+            const proportion = principal / current.reduce((sum, a) =>
+                sum + convertToGBP(a.Balance, a.Currency), 0);
+            const accountContribution = monthlyContribution * proportion;
+
+            // Future value of annuity: FV = PMT * [(1 + r)^n - 1] / r
+            if (monthlyRate > 0) {
+                futureValue += accountContribution * (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate;
+            } else {
+                futureValue += accountContribution * months;
+            }
+        }
+
+        return {
+            name: acc.Account_Name,
+            current: principal,
+            projected: futureValue,
+            growth: futureValue - principal
+        };
+    });
+
+    return accountForecasts;
+}
+
+// Update forecast display
+function updateForecast() {
+    const forecasts = calculateForecast();
+    const totalProjected = forecasts.reduce((sum, f) => sum + f.projected, 0);
+
+    // Update forecast card
+    document.getElementById('forecastAmount').textContent = `£${formatCurrency(totalProjected)}`;
+
+    const timeframeText = forecastMonths === 6 ? '6 months' :
+                         forecastMonths === 12 ? '1 year' :
+                         forecastMonths === 24 ? '2 years' :
+                         `${forecastMonths} months`;
+    document.getElementById('forecastTimeframe').textContent = `in ${timeframeText}`;
+
+    // Update forecast breakdown table
+    const tbody = document.querySelector('#forecastTable tbody');
+    tbody.innerHTML = '';
+
+    forecasts.forEach(f => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${f.name}</td>
+            <td>£${formatCurrency(f.current)}</td>
+            <td>£${formatCurrency(f.projected)}</td>
+            <td class="${f.growth >= 0 ? 'positive-growth' : 'negative-growth'}">
+                £${formatCurrency(Math.abs(f.growth))}
+                ${f.growth >= 0 ? '↑' : '↓'}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Update forecast chart
+    updateForecastChart(forecasts);
+}
+
+// Update forecast chart
+function updateForecastChart(forecasts) {
+    const current = getCurrentSnapshot();
+    const currentTotal = current.reduce((sum, acc) =>
+        sum + convertToGBP(acc.Balance, acc.Currency), 0);
+
+    // Generate monthly data points
+    const labels = [];
+    const data = [];
+    const monthlyContribution = parseFloat(document.getElementById('monthlyContribution').value) || 0;
+
+    for (let month = 0; month <= forecastMonths; month++) {
+        labels.push(month === 0 ? 'Now' : `+${month}mo`);
+
+        if (month === 0) {
+            data.push(currentTotal);
+        } else {
+            // Recalculate for this specific month
+            let totalForMonth = 0;
+            current.forEach(acc => {
+                const principal = convertToGBP(acc.Balance, acc.Currency);
+                const annualRate = acc.Interest_Rate / 100;
+                const monthlyRate = annualRate / 12;
+
+                let futureValue = principal * Math.pow(1 + monthlyRate, month);
+
+                if (monthlyContribution > 0) {
+                    const proportion = principal / currentTotal;
+                    const accountContribution = monthlyContribution * proportion;
+
+                    if (monthlyRate > 0) {
+                        futureValue += accountContribution *
+                            (Math.pow(1 + monthlyRate, month) - 1) / monthlyRate;
+                    } else {
+                        futureValue += accountContribution * month;
+                    }
+                }
+
+                totalForMonth += futureValue;
+            });
+            data.push(totalForMonth);
+        }
+    }
+
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    if (charts.forecast) {
+        charts.forecast.destroy();
+    }
+
+    charts.forecast = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Projected Net Worth',
+                data: data,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 3,
+                borderDash: [5, 5],
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `£${formatCurrency(context.parsed.y)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '£' + (value / 1000).toFixed(0) + 'k';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Setup net worth event listeners
+function setupNetWorthEventListeners() {
+    // Forecast preset buttons
+    document.querySelectorAll('.forecast-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const months = parseInt(e.target.dataset.months);
+            forecastMonths = months;
+
+            // Update active state
+            document.querySelectorAll('.forecast-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            // Update forecast date input
+            const newDate = new Date();
+            newDate.setMonth(newDate.getMonth() + months);
+            document.getElementById('forecastDate').valueAsDate = newDate;
+
+            updateForecast();
+        });
+    });
+
+    // Forecast date picker
+    document.getElementById('forecastDate').addEventListener('change', (e) => {
+        const selectedDate = new Date(e.target.value);
+        const now = new Date();
+        const monthsDiff = Math.round((selectedDate - now) / (1000 * 60 * 60 * 24 * 30.44));
+        forecastMonths = Math.max(1, monthsDiff);
+
+        // Clear preset button active states
+        document.querySelectorAll('.forecast-btn').forEach(b => b.classList.remove('active'));
+
+        updateForecast();
+    });
+
+    // Monthly contribution input
+    document.getElementById('monthlyContribution').addEventListener('input', () => {
+        updateForecast();
+    });
 }

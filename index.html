@@ -12,6 +12,146 @@
 </head>
 <body>
     <div class="container">
+        <!-- ====== NET WORTH & FORECAST SECTION ====== -->
+        <section class="networth-section">
+            <h2 class="section-header">📈 Net Worth & Forecast</h2>
+
+            <!-- Current Snapshot Cards -->
+            <div class="networth-summary">
+                <div class="networth-card total-card">
+                    <div class="networth-icon">💎</div>
+                    <div class="networth-content">
+                        <h4>Total Net Worth</h4>
+                        <p class="networth-value" id="totalNetWorth">£0.00</p>
+                    </div>
+                </div>
+                <div class="networth-card isa-card">
+                    <div class="networth-icon">🏦</div>
+                    <div class="networth-content">
+                        <h4>Total in ISAs</h4>
+                        <p class="networth-value" id="totalISAs">£0.00</p>
+                    </div>
+                </div>
+                <div class="networth-card liquid-card">
+                    <div class="networth-icon">💵</div>
+                    <div class="networth-content">
+                        <h4>Total Liquid</h4>
+                        <p class="networth-value" id="totalLiquid">£0.00</p>
+                    </div>
+                </div>
+                <div class="networth-card foreign-card">
+                    <div class="networth-icon">🌏</div>
+                    <div class="networth-content">
+                        <h4>Foreign Holdings</h4>
+                        <p class="networth-value" id="foreignHoldings">0 AUD (£0.00)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holdings Table and Historical Chart - Side by Side -->
+            <div class="holdings-historical-row">
+                <!-- Current Holdings Table -->
+                <div class="holdings-table-container">
+                    <h3>Current Holdings</h3>
+                    <table class="holdings-table" id="holdingsTable">
+                        <thead>
+                            <tr>
+                                <th>Account Name</th>
+                                <th>Balance</th>
+                                <th>Currency</th>
+                                <th>GBP Equiv.</th>
+                                <th>Interest</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Historical Tracking -->
+                <div class="historical-section">
+                    <h3>Net Worth Over Time</h3>
+                    <div class="chart-container">
+                        <canvas id="networthHistoryChart"></canvas>
+                    </div>
+                    <div class="growth-stats">
+                        <div class="growth-stat">
+                            <span class="growth-label">Total Growth:</span>
+                            <span class="growth-value" id="totalGrowth">£0</span>
+                        </div>
+                        <div class="growth-stat">
+                            <span class="growth-label">Avg Monthly:</span>
+                            <span class="growth-value" id="avgMonthlyGrowth">£0/mo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Forecast Section -->
+            <div class="forecast-section">
+                <h3>Forecast Your Net Worth</h3>
+
+                <div class="forecast-main-layout">
+                    <!-- Left Panel: Controls and Result -->
+                    <div class="forecast-left-panel">
+                        <div class="forecast-controls">
+                            <div class="forecast-presets">
+                                <button class="forecast-btn active" data-months="6">6 Months</button>
+                                <button class="forecast-btn" data-months="12">1 Year</button>
+                                <button class="forecast-btn" data-months="24">2 Years</button>
+                            </div>
+                            <div class="forecast-inputs">
+                                <label>
+                                    Forecast to:
+                                    <input type="date" id="forecastDate" class="forecast-date-input">
+                                </label>
+                                <label>
+                                    Monthly contribution: £
+                                    <input type="number" id="monthlyContribution" value="0" min="0" step="100" class="contribution-input">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="forecast-result-card">
+                            <p class="forecast-label">Projected Net Worth:</p>
+                            <p class="forecast-amount" id="forecastAmount">£0.00</p>
+                            <p class="forecast-timeframe" id="forecastTimeframe">in 6 months</p>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Chart and Breakdown -->
+                    <div class="forecast-right-panel">
+                        <div class="chart-container">
+                            <canvas id="forecastChart"></canvas>
+                        </div>
+
+                        <div class="forecast-breakdown">
+                            <h4>Account Breakdown</h4>
+                            <div class="forecast-table-wrapper">
+                                <table class="forecast-table" id="forecastTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Account</th>
+                                            <th>Current</th>
+                                            <th>Projected</th>
+                                            <th>Growth</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- ====== EXPENSE ANALYSIS SECTION ====== -->
         <!-- Filters Section -->
         <section class="filters-section">
             <div class="time-filters">

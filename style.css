@@ -375,3 +375,380 @@ footer {
 .checkbox-group::-webkit-scrollbar-thumb:hover {
     background: var(--gray-400);
 }
+
+/* ========================================
+   NET WORTH & FORECAST SECTION
+   ======================================== */
+
+.networth-section {
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    font-size: 1.5rem;
+    color: var(--gray-900);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.section-divider {
+    border-top: 3px solid var(--gray-200);
+    margin: 2rem 0;
+}
+
+/* Net Worth Summary Cards */
+.networth-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.networth-card {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.networth-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.networth-icon {
+    font-size: 2.5rem;
+    width: 55px;
+    height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+}
+
+.total-card .networth-icon {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.isa-card .networth-icon {
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.liquid-card .networth-icon {
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.foreign-card .networth-icon {
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.networth-content h4 {
+    font-size: 0.75rem;
+    color: var(--gray-600);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.networth-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin: 0;
+}
+
+/* Holdings and Historical - Side by Side */
+.holdings-historical-row {
+    display: grid;
+    grid-template-columns: 45% 55%;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Holdings Table */
+.holdings-table-container {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    overflow-x: auto;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.holdings-table-container h3 {
+    color: var(--gray-700);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.holdings-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.holdings-table th {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    border-bottom: 2px solid var(--gray-300);
+    position: sticky;
+    top: 0;
+}
+
+.holdings-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    font-size: 0.85rem;
+}
+
+.holdings-table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+/* Historical Section */
+.historical-section {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+.historical-section h3 {
+    color: var(--gray-700);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.growth-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--gray-50);
+    border-radius: 8px;
+}
+
+.growth-stat {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+}
+
+.growth-label {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+}
+
+.growth-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--success-green);
+}
+
+/* Forecast Section */
+.forecast-section {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.forecast-section h3 {
+    color: var(--gray-700);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.forecast-main-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1.5rem;
+}
+
+.forecast-left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.forecast-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.forecast-presets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.forecast-btn {
+    padding: 0.6rem 1rem;
+    background: var(--gray-100);
+    border: 2px solid var(--gray-200);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    transition: all 0.08s;
+}
+
+.forecast-btn:hover {
+    background: var(--gray-200);
+    border-color: var(--gray-300);
+}
+
+.forecast-btn.active {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+.forecast-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.forecast-inputs label {
+    font-size: 0.8rem;
+    color: var(--gray-700);
+    font-weight: 500;
+}
+
+.forecast-date-input,
+.contribution-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 6px;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.forecast-date-input:focus,
+.contribution-input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+}
+
+.forecast-result-card {
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: white;
+    padding: 1.25rem;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.forecast-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+    margin-bottom: 0.25rem;
+}
+
+.forecast-amount {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0.25rem 0;
+}
+
+.forecast-timeframe {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-top: 0.25rem;
+}
+
+.forecast-right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.forecast-breakdown {
+    margin-top: 0;
+}
+
+.forecast-breakdown h4 {
+    color: var(--gray-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.forecast-table-wrapper {
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.forecast-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.forecast-table th {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    border-bottom: 2px solid var(--gray-300);
+    position: sticky;
+    top: 0;
+}
+
+.forecast-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    font-size: 0.85rem;
+}
+
+.forecast-table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+.positive-growth {
+    color: var(--success-green);
+    font-weight: 600;
+}
+
+.negative-growth {
+    color: var(--danger-red);
+    font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .holdings-historical-row {
+        grid-template-columns: 1fr;
+    }
+
+    .forecast-main-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .growth-stats {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .networth-summary {
+        grid-template-columns: 1fr;
+    }
+}
