@@ -470,8 +470,8 @@ function calculateStats(filteredTransactions) {
 // Format number with thousand separators
 function formatCurrency(amount) {
     return amount.toLocaleString('en-GB', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
     });
 }
 
@@ -645,7 +645,7 @@ function updateMonthlyTrendChart(data) {
                     intersect: false,
                     callbacks: {
                         label: function(context) {
-                            return `${context.dataset.label}: £${context.parsed.y.toFixed(2)}`;
+                            return `${context.dataset.label}: £${context.parsed.y.toFixed(0)}`;
                         }
                     }
                 }
@@ -703,7 +703,7 @@ function updateCategoryPieChart(data) {
                             const value = context.parsed;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
                             const percentage = ((value / total) * 100).toFixed(1);
-                            return `${label}: £${value.toFixed(2)} (${percentage}%)`;
+                            return `${label}: £${value.toFixed(0)} (${percentage}%)`;
                         }
                     }
                 }
@@ -751,7 +751,7 @@ function updateCategoryBarChart(data) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `£${context.parsed.x.toFixed(2)}`;
+                            return `£${context.parsed.x.toFixed(0)}`;
                         }
                     }
                 }
@@ -899,8 +899,8 @@ function updateNetWorthSummary() {
     document.getElementById('totalNetWorth').textContent = `£${formatCurrency(totalNetWorth)}`;
     document.getElementById('totalISAs').textContent = `£${formatCurrency(totalISAs)}`;
     document.getElementById('totalLiquid').textContent = `£${formatCurrency(totalLiquid)}`;
-    document.getElementById('foreignHoldings').textContent =
-        `${formatCurrency(foreignTotal)} AUD (£${formatCurrency(foreignGBP)})`;
+    document.getElementById('foreignHoldings').innerHTML =
+        `${formatCurrency(foreignTotal)} AUD <span class="conversion-hint">(£${formatCurrency(foreignGBP)})</span>`;
 }
 
 // Update holdings table

@@ -567,6 +567,12 @@ footer {
     margin: 0;
 }
 
+.conversion-hint {
+    font-size: 1.1rem;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
 /* Holdings and Historical - Side by Side */
 .holdings-historical-row {
     display: grid;
@@ -617,6 +623,43 @@ footer {
 
 .holdings-table tbody tr:hover {
     background: var(--gray-50);
+}
+
+/* Holdings table column alignment */
+.holdings-table th:nth-child(1),
+.holdings-table td:nth-child(1) {
+    text-align: left; /* Account Name */
+}
+
+.holdings-table th:nth-child(2),
+.holdings-table td:nth-child(2) {
+    text-align: right; /* Balance */
+}
+
+.holdings-table th:nth-child(3),
+.holdings-table td:nth-child(3) {
+    text-align: center; /* Currency */
+}
+
+.holdings-table th:nth-child(4),
+.holdings-table td:nth-child(4) {
+    text-align: right; /* GBP Equiv. */
+}
+
+.holdings-table th:nth-child(5),
+.holdings-table td:nth-child(5) {
+    text-align: left; /* Interest */
+}
+
+.holdings-table th:nth-child(6),
+.holdings-table td:nth-child(6) {
+    text-align: left; /* Last Updated */
+}
+
+/* Extra padding for right-aligned sortable headers to prevent arrow overlap */
+.holdings-table th.sortable:nth-child(2),
+.holdings-table th.sortable:nth-child(4) {
+    padding-right: 2rem; /* Extra space for sort arrow */
 }
 
 /* Historical Section */
@@ -674,27 +717,21 @@ footer {
     font-size: 1rem;
 }
 
-.forecast-main-layout {
-    display: grid;
-    grid-template-columns: 350px 1fr;
+/* Forecast Controls Row - Horizontal layout at top */
+.forecast-controls-row {
+    display: flex;
+    align-items: center;
     gap: 1.5rem;
-}
-
-.forecast-left-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.forecast-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
 }
 
 .forecast-presets {
     display: flex;
-    flex-direction: column;
     gap: 0.5rem;
 }
 
@@ -723,24 +760,27 @@ footer {
 
 .forecast-inputs {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    gap: 1rem;
+    align-items: center;
 }
 
 .forecast-inputs label {
     font-size: 0.8rem;
     color: var(--gray-700);
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
 }
 
 .forecast-date-input,
 .contribution-input {
-    width: 100%;
     padding: 0.5rem;
     border: 2px solid var(--gray-200);
     border-radius: 6px;
-    margin-top: 0.25rem;
     font-size: 0.9rem;
+    width: 140px;
 }
 
 .forecast-date-input:focus,
@@ -749,54 +789,60 @@ footer {
     border-color: var(--primary-blue);
 }
 
-.forecast-result-card {
+/* Inline result display */
+.forecast-result-inline {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
     background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
     color: white;
-    padding: 1.25rem;
-    border-radius: 12px;
-    text-align: center;
+    border-radius: 8px;
 }
 
-.forecast-label {
-    font-size: 0.75rem;
+.forecast-label-inline {
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0.9;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    opacity: 0.9;
-    margin-bottom: 0.25rem;
 }
 
-.forecast-amount {
-    font-size: 1.75rem;
+.forecast-amount-inline {
+    font-size: 1.5rem;
     font-weight: 700;
-    margin: 0.25rem 0;
 }
 
-.forecast-timeframe {
+.forecast-timeframe-inline {
     font-size: 0.85rem;
     opacity: 0.9;
-    margin-top: 0.25rem;
 }
 
-.forecast-right-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+/* Content row - Table left, Chart right */
+.forecast-content-row {
+    display: grid;
+    grid-template-columns: 40% 1fr;
+    gap: 1.5rem;
 }
 
-.forecast-breakdown {
-    margin-top: 0;
+.forecast-table-section {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
 }
 
-.forecast-breakdown h4 {
+.forecast-table-section h4 {
     color: var(--gray-700);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     font-size: 0.9rem;
 }
 
-.forecast-table-wrapper {
-    max-height: 250px;
-    overflow-y: auto;
-    overflow-x: auto;
+.forecast-chart-section {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
 }
 
 .forecast-table {
@@ -824,6 +870,34 @@ footer {
 
 .forecast-table tbody tr:hover {
     background: var(--gray-50);
+}
+
+/* Forecast table column alignment */
+.forecast-table th:nth-child(1),
+.forecast-table td:nth-child(1) {
+    text-align: left; /* Account */
+}
+
+.forecast-table th:nth-child(2),
+.forecast-table td:nth-child(2) {
+    text-align: right; /* Current */
+}
+
+.forecast-table th:nth-child(3),
+.forecast-table td:nth-child(3) {
+    text-align: right; /* Projected */
+}
+
+.forecast-table th:nth-child(4),
+.forecast-table td:nth-child(4) {
+    text-align: right; /* Growth */
+}
+
+/* Extra padding for right-aligned sortable headers to prevent arrow overlap */
+.forecast-table th.sortable:nth-child(2),
+.forecast-table th.sortable:nth-child(3),
+.forecast-table th.sortable:nth-child(4) {
+    padding-right: 2rem; /* Extra space for sort arrow */
 }
 
 .positive-growth {

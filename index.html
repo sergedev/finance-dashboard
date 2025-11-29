@@ -111,58 +111,53 @@
             <div class="forecast-section">
                 <h3>Forecast Your Net Worth</h3>
 
-                <div class="forecast-main-layout">
-                    <!-- Left Panel: Controls and Result -->
-                    <div class="forecast-left-panel">
-                        <div class="forecast-controls">
-                            <div class="forecast-presets">
-                                <button class="forecast-btn active" data-months="6">6 Months</button>
-                                <button class="forecast-btn" data-months="12">1 Year</button>
-                                <button class="forecast-btn" data-months="24">2 Years</button>
-                            </div>
-                            <div class="forecast-inputs">
-                                <label>
-                                    Forecast to:
-                                    <input type="date" id="forecastDate" class="forecast-date-input">
-                                </label>
-                                <label>
-                                    Monthly contribution: £
-                                    <input type="number" id="monthlyContribution" value="0" min="0" step="100" class="contribution-input">
-                                </label>
-                            </div>
-                        </div>
+                <!-- Controls Row -->
+                <div class="forecast-controls-row">
+                    <div class="forecast-presets">
+                        <button class="forecast-btn active" data-months="6">6 Months</button>
+                        <button class="forecast-btn" data-months="12">1 Year</button>
+                        <button class="forecast-btn" data-months="24">2 Years</button>
+                    </div>
+                    <div class="forecast-inputs">
+                        <label>
+                            Forecast to:
+                            <input type="date" id="forecastDate" class="forecast-date-input">
+                        </label>
+                        <label>
+                            Monthly contribution (Net Savings): £
+                            <input type="number" id="monthlyContribution" value="0" min="0" step="100" class="contribution-input">
+                        </label>
+                    </div>
+                    <div class="forecast-result-inline">
+                        <span class="forecast-label-inline">Projected:</span>
+                        <span class="forecast-amount-inline" id="forecastAmount">£0</span>
+                        <span class="forecast-timeframe-inline" id="forecastTimeframe">in 6 months</span>
+                    </div>
+                </div>
 
-                        <div class="forecast-result-card">
-                            <p class="forecast-label">Projected Net Worth:</p>
-                            <p class="forecast-amount" id="forecastAmount">£0.00</p>
-                            <p class="forecast-timeframe" id="forecastTimeframe">in 6 months</p>
-                        </div>
+                <!-- Table and Chart Row -->
+                <div class="forecast-content-row">
+                    <!-- Left: Account Breakdown Table -->
+                    <div class="forecast-table-section">
+                        <h4>Account Breakdown</h4>
+                        <table class="forecast-table" id="forecastTable">
+                            <thead>
+                                <tr>
+                                    <th class="sortable">Account</th>
+                                    <th class="sortable">Current</th>
+                                    <th class="sortable">Projected</th>
+                                    <th class="sortable">Growth</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
                     </div>
 
-                    <!-- Right Panel: Chart and Breakdown -->
-                    <div class="forecast-right-panel">
-                        <div class="chart-container">
-                            <canvas id="forecastChart"></canvas>
-                        </div>
-
-                        <div class="forecast-breakdown">
-                            <h4>Account Breakdown</h4>
-                            <div class="forecast-table-wrapper">
-                                <table class="forecast-table" id="forecastTable">
-                                    <thead>
-                                        <tr>
-                                            <th class="sortable">Account</th>
-                                            <th class="sortable">Current</th>
-                                            <th class="sortable">Projected</th>
-                                            <th class="sortable">Growth</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Populated by JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <!-- Right: Forecast Chart -->
+                    <div class="forecast-chart-section">
+                        <canvas id="forecastChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -171,10 +166,14 @@
         <div class="section-divider"></div>
 
         <!-- ====== EXPENSE ANALYSIS SECTION ====== -->
+        <section class="expense-section">
+            <h2 class="section-header">💰 Income & Expenses</h2>
+        </section>
+
         <!-- Filters Section -->
         <section class="filters-section">
             <div class="time-filters">
-                <h3><span class="page-title">💰 Finance Dashboard</span> | Time Period</h3>
+                <h3>Time Period</h3>
                 <div class="filter-group">
                     <select id="monthSelect">
                         <option value="all">All Months</option>
