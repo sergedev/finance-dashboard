@@ -489,35 +489,72 @@ function getMonthlyTrendData(filteredTransactions) {
     // Exclude Transfers
     const transactionsForChart = filteredTransactions.filter(t => t.Category !== 'Transfers');
 
-    const monthlyData = {};
+    // Check if viewing a single month (format: YYYY-MM)
+    const isSingleMonth = currentTimeFilter && /^\d{4}-\d{2}$/.test(currentTimeFilter);
 
-    transactionsForChart.forEach(t => {
-        const monthKey = `${t.Date.getFullYear()}-${String(t.Date.getMonth() + 1).padStart(2, '0')}`;
+    if (isSingleMonth) {
+        // Group by day for single month view
+        const dailyData = {};
 
-        if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { income: 0, expenses: 0 };
-        }
+        transactionsForChart.forEach(t => {
+            const dayKey = `${t.Date.getFullYear()}-${String(t.Date.getMonth() + 1).padStart(2, '0')}-${String(t.Date.getDate()).padStart(2, '0')}`;
 
-        if (t.Amount > 0) {
-            monthlyData[monthKey].income += t.Amount;
-        } else {
-            monthlyData[monthKey].expenses += Math.abs(t.Amount);
-        }
-    });
+            if (!dailyData[dayKey]) {
+                dailyData[dayKey] = { income: 0, expenses: 0 };
+            }
 
-    // Sort by date
-    const sortedMonths = Object.keys(monthlyData).sort();
+            if (t.Amount > 0) {
+                dailyData[dayKey].income += t.Amount;
+            } else {
+                dailyData[dayKey].expenses += Math.abs(t.Amount);
+            }
+        });
 
-    const labels = sortedMonths.map(month => {
-        const [year, monthNum] = month.split('-');
-        const date = new Date(year, monthNum - 1);
-        return date.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
-    });
+        // Sort by date
+        const sortedDays = Object.keys(dailyData).sort();
 
-    const incomeData = sortedMonths.map(month => monthlyData[month].income);
-    const expenseData = sortedMonths.map(month => monthlyData[month].expenses);
+        const labels = sortedDays.map(day => {
+            const [year, month, dayNum] = day.split('-');
+            const date = new Date(year, month - 1, dayNum);
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        });
 
-    return { labels, incomeData, expenseData };
+        const incomeData = sortedDays.map(day => dailyData[day].income);
+        const expenseData = sortedDays.map(day => dailyData[day].expenses);
+
+        return { labels, incomeData, expenseData };
+    } else {
+        // Group by month for multi-month view
+        const monthlyData = {};
+
+        transactionsForChart.forEach(t => {
+            const monthKey = `${t.Date.getFullYear()}-${String(t.Date.getMonth() + 1).padStart(2, '0')}`;
+
+            if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = { income: 0, expenses: 0 };
+            }
+
+            if (t.Amount > 0) {
+                monthlyData[monthKey].income += t.Amount;
+            } else {
+                monthlyData[monthKey].expenses += Math.abs(t.Amount);
+            }
+        });
+
+        // Sort by date
+        const sortedMonths = Object.keys(monthlyData).sort();
+
+        const labels = sortedMonths.map(month => {
+            const [year, monthNum] = month.split('-');
+            const date = new Date(year, monthNum - 1);
+            return date.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+        });
+
+        const incomeData = sortedMonths.map(month => monthlyData[month].income);
+        const expenseData = sortedMonths.map(month => monthlyData[month].expenses);
+
+        return { labels, incomeData, expenseData };
+    }
 }
 
 // Prepare data for category charts
@@ -740,6 +777,13 @@ function updateDashboard() {
     // Update summary stats
     const stats = calculateStats(filtered);
     updateSummaryStats(stats);
+
+    // Update chart title based on view
+    const isSingleMonth = currentTimeFilter && /^\d{4}-\d{2}$/.test(currentTimeFilter);
+    const chartTitle = document.getElementById('trendChartTitle');
+    if (chartTitle) {
+        chartTitle.textContent = isSingleMonth ? 'Daily Income vs Expenses' : 'Monthly Income vs Expenses';
+    }
 
     // Update charts
     const monthlyData = getMonthlyTrendData(filtered);
