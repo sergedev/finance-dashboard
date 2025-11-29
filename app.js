@@ -15,65 +15,72 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLastUpdatedTime();
 });
 
-// Load CSV data
+// Load Excel data
 async function loadData() {
     try {
         // Fetch exchange rates first
         await fetchExchangeRates();
 
-        // Load all CSV files
-        const transactionsResponse = await fetch('data/transactions.2025.csv');
-        const transactionsText = await transactionsResponse.text();
+        // Try to load from data/ folder first, fall back to data_dummy/ if not found
+        let response;
+        let dataSource = 'real';
 
-        const categoriesResponse = await fetch('data/categories.2025.csv');
-        const categoriesText = await categoriesResponse.text();
+        try {
+            response = await fetch('data/finance.2025.xlsx');
+            if (!response.ok) throw new Error('File not found');
+            console.log('Loading real data from data/finance.2025.xlsx');
+        } catch (e) {
+            console.log('Real data not found, loading dummy data from data_dummy/finance.2025.xlsx');
+            response = await fetch('data_dummy/finance.2025.xlsx');
+            dataSource = 'dummy';
+        }
 
-        const snapshotsResponse = await fetch('data/snapshots.csv');
-        const snapshotsText = await snapshotsResponse.text();
+        const arrayBuffer = await response.arrayBuffer();
 
-        // Parse CSVs
-        Papa.parse(transactionsText, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-                transactions = results.data.map(row => ({
-                    ...row,
-                    Amount: parseAmount(row.Amount),
-                    Balance: parseAmount(row.Balance),
-                    Date: parseDate(row.Date)
-                }));
+        // Parse Excel file
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
-                // Parse categories
-                Papa.parse(categoriesText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        categories = results.data;
+        // Extract data from each sheet
+        const transactionsSheet = workbook.Sheets['Transactions'];
+        const categoriesSheet = workbook.Sheets['Categories'];
+        const snapshotsSheet = workbook.Sheets['Snapshots'];
 
-                        // Parse snapshots
-                        Papa.parse(snapshotsText, {
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: (results) => {
-                                snapshots = results.data.map(row => ({
-                                    ...row,
-                                    Balance: parseFloat(row.Balance) || 0,
-                                    Interest_Rate: parseFloat(row.Interest_Rate) || 0,
-                                    Date: parseDate(row.Date)
-                                }));
+        // Convert sheets to JSON
+        const transactionsData = XLSX.utils.sheet_to_json(transactionsSheet);
+        const categoriesData = XLSX.utils.sheet_to_json(categoriesSheet);
+        const snapshotsData = XLSX.utils.sheet_to_json(snapshotsSheet);
 
-                                // Initialize both dashboards
-                                initializeDashboard();
-                                initializeNetWorth();
-                            }
-                        });
-                    }
-                });
-            }
-        });
+        // Process transactions
+        transactions = transactionsData.map(row => ({
+            ...row,
+            Amount: parseFloat(row.Amount) || 0,
+            Balance: parseFloat(row.Balance) || 0,
+            Date: parseExcelDate(row.Date)
+        }));
+
+        // Process categories
+        categories = categoriesData;
+
+        // Process snapshots
+        snapshots = snapshotsData.map(row => ({
+            ...row,
+            Balance: parseFloat(row.Balance) || 0,
+            Interest_Rate: parseFloat(row.Interest_Rate) || 0,
+            Date: parseExcelDate(row.Date)
+        }));
+
+        // Initialize both dashboards
+        initializeDashboard();
+        initializeNetWorth();
+
+        // Log data source for debugging
+        if (dataSource === 'dummy') {
+            console.log('📊 Using dummy data. Add your own data/finance.2025.xlsx to use real data.');
+        }
+
     } catch (error) {
         console.error('Error loading data:', error);
-        alert('Error loading data. Please ensure CSV files are in the data/ folder.');
+        alert('Error loading data. Please ensure finance.2025.xlsx is in the data/ or data_dummy/ folder.');
     }
 }
 
@@ -83,6 +90,24 @@ function parseAmount(amountStr) {
     // Remove £ symbol, commas, quotes, and whitespace, then parse
     const cleaned = amountStr.toString().replace(/[£,"\s]/g, '');
     return parseFloat(cleaned) || 0;
+}
+
+// Parse Excel date - handles Excel serial numbers and text dates
+function parseExcelDate(dateValue) {
+    if (!dateValue) return new Date();
+
+    // If it's already a Date object, return it
+    if (dateValue instanceof Date) return dateValue;
+
+    // If it's a number (Excel serial date)
+    if (typeof dateValue === 'number') {
+        // Excel dates are days since 1900-01-01 (with leap year bug adjustment)
+        const excelEpoch = new Date(1899, 11, 30);
+        return new Date(excelEpoch.getTime() + dateValue * 86400000);
+    }
+
+    // If it's a string, use the parseDate function
+    return parseDate(dateValue.toString());
 }
 
 // Parse date - handles both DD-MMM-YY and DD/MM/YYYY formats

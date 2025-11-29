@@ -1,9 +1,12 @@
 # Data files with personal financial information
 data/*.csv
+data/*.xlsx
+data/*.xls
 
 # Keep example/template data files if added later
 !data/*.example.csv
 !data/*.template.csv
+!data/*.example.xlsx
 
 # OS generated files
 .DS_Store
