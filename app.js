@@ -25,13 +25,24 @@ async function loadData() {
         let response;
         let dataSource = 'real';
 
+        // Add cache-busting timestamp to ensure fresh data on every load
+        const cacheBuster = `?t=${Date.now()}`;
+        const fetchOptions = {
+            cache: 'no-store',  // Don't use cached version
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        };
+
         try {
-            response = await fetch('data/finance.2025.xlsx');
+            response = await fetch(`data/finance.2025.xlsx${cacheBuster}`, fetchOptions);
             if (!response.ok) throw new Error('File not found');
-            console.log('Loading real data from data/finance.2025.xlsx');
+            console.log('✓ Loading real data from data/finance.2025.xlsx');
         } catch (e) {
-            console.log('Real data not found, loading dummy data from data_dummy/finance.2025.xlsx');
-            response = await fetch('data_dummy/finance.2025.xlsx');
+            console.log('ℹ Real data not found, loading dummy data from data_dummy/finance.2025.xlsx');
+            response = await fetch(`data_dummy/finance.2025.xlsx${cacheBuster}`, fetchOptions);
             dataSource = 'dummy';
         }
 
