@@ -38,6 +38,74 @@ body {
     margin: 0 auto;
 }
 
+/* Data Source Banner */
+.data-source-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-md);
+}
+
+.data-source-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.data-source-icon {
+    font-size: 1.25rem;
+}
+
+.data-source-text {
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.upload-controls {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.upload-btn {
+    background: white;
+    color: #667eea;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.08s;
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.upload-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.reset-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.08s;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.reset-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
 /* Page Title (inline with filters) */
 .page-title {
     color: var(--primary-blue);

@@ -7,6 +7,7 @@ let selectedCategories = new Set();
 let currentTimeFilter = 'all';
 let exchangeRates = { AUD: 0.50 }; // Fallback rates
 let forecastMonths = 6; // Default forecast period
+let uploadedFileData = null; // Store uploaded Excel file data
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', () => {
@@ -21,32 +22,42 @@ async function loadData() {
         // Fetch exchange rates first
         await fetchExchangeRates();
 
-        // Try to load from data/ folder first, fall back to data_dummy/ if not found
-        let response;
-        let dataSource = 'real';
+        let arrayBuffer;
+        let dataSource = 'dummy';
 
-        // Add cache-busting timestamp to ensure fresh data on every load
-        const cacheBuster = `?t=${Date.now()}`;
-        const fetchOptions = {
-            cache: 'no-store',  // Don't use cached version
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
+        // Check if user uploaded a file
+        if (uploadedFileData) {
+            console.log('✓ Loading uploaded data');
+            arrayBuffer = uploadedFileData;
+            dataSource = 'uploaded';
+        } else {
+            // Try to load from data/ folder first, fall back to data_dummy/ if not found
+            let response;
+
+            // Add cache-busting timestamp to ensure fresh data on every load
+            const cacheBuster = `?t=${Date.now()}`;
+            const fetchOptions = {
+                cache: 'no-store',  // Don't use cached version
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            };
+
+            try {
+                response = await fetch(`data/finance.2025.xlsx${cacheBuster}`, fetchOptions);
+                if (!response.ok) throw new Error('File not found');
+                console.log('✓ Loading real data from data/finance.2025.xlsx');
+                dataSource = 'real';
+            } catch (e) {
+                console.log('ℹ Loading dummy data from data_dummy/finance.2025.xlsx');
+                response = await fetch(`data_dummy/finance.2025.xlsx${cacheBuster}`, fetchOptions);
+                dataSource = 'dummy';
             }
-        };
 
-        try {
-            response = await fetch(`data/finance.2025.xlsx${cacheBuster}`, fetchOptions);
-            if (!response.ok) throw new Error('File not found');
-            console.log('✓ Loading real data from data/finance.2025.xlsx');
-        } catch (e) {
-            console.log('ℹ Real data not found, loading dummy data from data_dummy/finance.2025.xlsx');
-            response = await fetch(`data_dummy/finance.2025.xlsx${cacheBuster}`, fetchOptions);
-            dataSource = 'dummy';
+            arrayBuffer = await response.arrayBuffer();
         }
-
-        const arrayBuffer = await response.arrayBuffer();
 
         // Parse Excel file
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
@@ -84,15 +95,55 @@ async function loadData() {
         initializeDashboard();
         initializeNetWorth();
 
-        // Log data source for debugging
-        if (dataSource === 'dummy') {
-            console.log('📊 Using dummy data. Add your own data/finance.2025.xlsx to use real data.');
-        }
+        // Update data source banner
+        updateDataSourceBanner(dataSource);
 
     } catch (error) {
         console.error('Error loading data:', error);
-        alert('Error loading data. Please ensure finance.2025.xlsx is in the data/ or data_dummy/ folder.');
+        alert('Error loading data. Please ensure you have uploaded a file or that finance.2025.xlsx is in the data/ or data_dummy/ folder.');
     }
+}
+
+// Update the data source banner
+function updateDataSourceBanner(source) {
+    const banner = document.getElementById('dataSourceText');
+    const resetBtn = document.getElementById('resetToDemo');
+
+    if (source === 'uploaded') {
+        banner.textContent = '✓ Using your uploaded data';
+        resetBtn.style.display = 'block';
+    } else if (source === 'real') {
+        banner.textContent = '✓ Using real data from data/ folder';
+        resetBtn.style.display = 'none';
+    } else {
+        banner.textContent = '📊 Using demo data - Upload your file to get started';
+        resetBtn.style.display = 'none';
+    }
+}
+
+// Handle file upload
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Verify it's an Excel file
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        alert('Please upload an Excel file (.xlsx or .xls)');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            uploadedFileData = e.target.result;
+            console.log('✓ File uploaded successfully:', file.name);
+            loadData();
+        } catch (error) {
+            console.error('Error reading file:', error);
+            alert('Error reading the Excel file. Please make sure it has the correct format.');
+        }
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 // Parse amount/balance values - handles £ symbols, commas, and whitespace
@@ -199,6 +250,15 @@ function createCategoryCheckboxes(categories) {
 
 // Setup event listeners
 function setupEventListeners() {
+    // File upload
+    document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+
+    // Reset to demo data
+    document.getElementById('resetToDemo').addEventListener('click', () => {
+        uploadedFileData = null;
+        loadData();
+    });
+
     // Time filter - Month select
     document.getElementById('monthSelect').addEventListener('change', (e) => {
         currentTimeFilter = e.target.value;

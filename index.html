@@ -12,6 +12,21 @@
 </head>
 <body>
     <div class="container">
+        <!-- ====== DATA SOURCE SECTION ====== -->
+        <div class="data-source-banner" id="dataSourceBanner">
+            <div class="data-source-info">
+                <span class="data-source-icon">📊</span>
+                <span class="data-source-text" id="dataSourceText">Using dummy data</span>
+            </div>
+            <div class="upload-controls">
+                <label for="fileUpload" class="upload-btn">
+                    📁 Upload Your Data
+                    <input type="file" id="fileUpload" accept=".xlsx,.xls" style="display: none;">
+                </label>
+                <button id="resetToDemo" class="reset-btn" style="display: none;">↺ Reset to Demo</button>
+            </div>
+        </div>
+
         <!-- ====== NET WORTH & FORECAST SECTION ====== -->
         <section class="networth-section">
             <h2 class="section-header">📈 Net Worth & Forecast</h2>
