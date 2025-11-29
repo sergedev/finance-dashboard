@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- PapaParse from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Filters Section -->
+        <section class="filters-section">
+            <div class="time-filters">
+                <h3><span class="page-title">💰 Finance Dashboard</span> | Time Period</h3>
+                <div class="filter-group">
+                    <select id="monthSelect">
+                        <option value="all">All Months</option>
+                        <option value="2025-01">January 2025</option>
+                        <option value="2025-02">February 2025</option>
+                        <option value="2025-03">March 2025</option>
+                        <option value="2025-04">April 2025</option>
+                        <option value="2025-05">May 2025</option>
+                        <option value="2025-06">June 2025</option>
+                        <option value="2025-07">July 2025</option>
+                        <option value="2025-08">August 2025</option>
+                        <option value="2025-09">September 2025</option>
+                        <option value="2025-10">October 2025</option>
+                        <option value="2025-11">November 2025</option>
+                        <option value="2025-12">December 2025</option>
+                    </select>
+                    <div class="preset-buttons">
+                        <button class="preset-btn" data-preset="30days">Last 30 Days</button>
+                        <button class="preset-btn" data-preset="6months">Last 6 Months</button>
+                        <button class="preset-btn" data-preset="ytd">Year to Date</button>
+                        <button class="preset-btn active" data-preset="all">All Time</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="category-filters">
+                <h3>Categories</h3>
+                <div class="filter-controls">
+                    <button id="toggleAll" class="toggle-btn">Deselect All</button>
+                </div>
+                <div id="categoryCheckboxes" class="checkbox-group">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Stats -->
+        <section class="summary-section">
+            <div class="stat-card income-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-content">
+                    <h4>Total Income</h4>
+                    <p class="stat-value" id="totalIncome">£0.00</p>
+                </div>
+            </div>
+            <div class="stat-card expense-card">
+                <div class="stat-icon">📉</div>
+                <div class="stat-content">
+                    <h4>Total Expenses</h4>
+                    <p class="stat-value" id="totalExpenses">£0.00</p>
+                </div>
+            </div>
+            <div class="stat-card savings-card">
+                <div class="stat-icon">💎</div>
+                <div class="stat-content">
+                    <h4>Net Savings</h4>
+                    <p class="stat-value" id="netSavings">£0.00</p>
+                </div>
+            </div>
+            <div class="stat-card rate-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <h4>Savings Rate</h4>
+                    <p class="stat-value" id="savingsRate">0%</p>
+                </div>
+            </div>
+            <div class="stat-card avg-card">
+                <div class="stat-icon">📅</div>
+                <div class="stat-content">
+                    <h4>Avg Monthly Spending</h4>
+                    <p class="stat-value" id="avgMonthly">£0.00</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <!-- Monthly Spending Trend -->
+            <div class="chart-container">
+                <h3>Monthly Income vs Expenses</h3>
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+
+            <!-- Expenses by Category (Pie) -->
+            <div class="chart-container half">
+                <h3>Expenses by Category</h3>
+                <canvas id="categoryPieChart"></canvas>
+            </div>
+
+            <!-- Category Breakdown (Bar) -->
+            <div class="chart-container half">
+                <h3>Top Spending Categories</h3>
+                <canvas id="categoryBarChart"></canvas>
+            </div>
+        </section>
+
+        <footer>
+            <p>Dashboard last updated: <span id="lastUpdated"></span></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
