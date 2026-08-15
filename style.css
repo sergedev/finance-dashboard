@@ -107,10 +107,23 @@ body {
     cursor: pointer;
     transition: all 0.08s;
     border: 1px solid rgba(255, 255, 255, 0.3);
+    /* The label swaps between "Reload demo" / "Reset to demo" / "Load demo data"
+       once the workbook loads. The banner is space-between, so any width change
+       here drags the buttons to its left. Fixed width, always in layout. */
+    min-width: 12rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
 }
 
-.reset-btn:hover {
+.reset-btn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.3);
+}
+
+.reset-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 
 /* Sortable table headers */
@@ -305,7 +318,7 @@ th.sortable.sort-desc::after {
 }
 
 .stat-icon {
-    font-size: 2rem;
+    font-size: 0;
     width: 50px;
     height: 50px;
     display: flex;
@@ -526,7 +539,7 @@ footer {
 }
 
 .networth-icon {
-    font-size: 2.5rem;
+    font-size: 0;
     width: 55px;
     height: 55px;
     display: flex;
@@ -931,3 +944,32 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+/* Review component mounted at the bottom of the dashboard */
+.review-section { margin-top: 2rem; }
+.review-section .review, .review-section .health { margin-bottom: 1rem; }
+
+/* Trend chart granularity toggle */
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.granularity { display: flex; gap: .25rem; }
+.gran-btn {
+    background: var(--gray-100); border: 0; border-radius: 999px; cursor: pointer;
+    padding: .25rem .7rem; font-size: .78rem; color: var(--gray-600);
+}
+.gran-btn.active { background: var(--primary-blue); color: #fff; }
+
+/* ---- Flat icon set -------------------------------------------------------
+   24x24 stroke icons that inherit currentColor, replacing the emoji set. */
+.icon {
+    width: 1em; height: 1em;
+    fill: none; stroke: currentColor;
+    stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+    vertical-align: -0.125em; flex: none;
+}
+.icon.inline { width: .95em; height: .95em; opacity: .75; }
+.icon.head { width: .85em; height: .85em; color: var(--primary-blue); }
+
+/* the icon tiles size the glyph rather than a font */
+.stat-icon .icon { width: 1.6rem; height: 1.6rem; stroke-width: 1.6; }
+.networth-icon .icon { width: 1.8rem; height: 1.8rem; stroke-width: 1.6; }
+.data-source-icon .icon { width: 1.25rem; height: 1.25rem; color: var(--primary-blue); }

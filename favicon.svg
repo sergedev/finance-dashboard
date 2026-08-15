@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    A coin whose rim is a donut chart, with a pound sign in the middle: the two
+    things this app is, in one mark. No <text> — a favicon can't rely on fonts,
+    so the pound is drawn as paths.
+
+    Geometry: the ring's OUTER edge is exactly the viewBox edge (r 27 + half of
+    the 10 stroke = 32), which buys the largest possible clear field in the
+    middle for the pound sign. The field is filled rather than transparent so
+    the pound keeps its contrast on a dark browser tab as well as a light one.
+
+    Warm coin palette, brightest at the top and deepening clockwise:
+      #fcd34d  #f59e0b  #ea7317   rim
+      #fffbeb                     field
+      #b45309                     pound
+  -->
+  <g fill="none" stroke-width="10" transform="rotate(-90 32 32)">
+    <circle cx="32" cy="32" r="27" stroke="#fcd34d" stroke-dasharray="91.3 78.4"  stroke-dashoffset="0"/>
+    <circle cx="32" cy="32" r="27" stroke="#f59e0b" stroke-dasharray="43.8 125.9" stroke-dashoffset="-93.3"/>
+    <circle cx="32" cy="32" r="27" stroke="#ea7317" stroke-dasharray="28.5 141.2" stroke-dashoffset="-139.1"/>
+  </g>
+
+  <!-- 22.5 rather than 22, so no hairline shows where it meets the rim -->
+  <circle cx="32" cy="32" r="22.5" fill="#fffbeb"/>
+
+  <!-- the pound's own bbox centre is (32.5, 30.75), so that is what gets moved to (32, 32) -->
+  <g transform="translate(32 32) scale(0.85) translate(-32.5 -30.75)">
+    <g fill="none" stroke="#b45309" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M40 21 C40 14 28 13 28 22 L28 39 C28 43 26 45 23 46 L43 46"/>
+      <path d="M22 34 H37"/>
+    </g>
+  </g>
+</svg>

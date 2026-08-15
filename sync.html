@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    <title>Import &amp; Categorise</title>
+    <link rel="stylesheet" href="review.css">
+    <link rel="stylesheet" href="sync.css">
+    <script src="vendor/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+    <header class="head">
+        <div>
+            <h1>Import &amp; Categorise</h1>
+            <p class="sub">Everything stays in this browser. Nothing is uploaded.</p>
+        </div>
+        <a class="ghost-link" href="index.html">Dashboard →</a>
+    </header>
+
+    <!-- Step 1 ------------------------------------------------------------ -->
+    <section class="step" id="step1">
+        <div class="step-num">1</div>
+        <div class="step-body">
+            <h2>Workbook</h2>
+            <div class="drop" id="dropWorkbook">
+                <input type="file" id="fileWorkbook" accept=".xlsx,.xlsm" hidden>
+                <p><strong>Drop your finance workbook here</strong> or <button class="link" id="pickWorkbook">choose a file</button></p>
+                <p class="hint">The .xlsx holding your bank sheets and rules</p>
+            </div>
+            <div class="loaded" id="workbookInfo" hidden></div>
+        </div>
+    </section>
+
+    <!-- Step 2 ------------------------------------------------------------ -->
+    <section class="step disabled" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-body">
+            <h2>Bank statement <span class="optional">optional</span></h2>
+            <div class="drop" id="dropStatement">
+                <input type="file" id="fileStatement" accept=".csv,.txt" hidden>
+                <p><strong>Drop the statement you just downloaded</strong> or <button class="link" id="pickStatement">choose a file</button></p>
+                <p class="hint">New transactions are appended after the last one already stored</p>
+            </div>
+            <div class="loaded" id="statementInfo" hidden></div>
+        </div>
+    </section>
+
+    <div id="reviewRoot"></div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="review.js"></script>
+<script src="sync.js"></script>
+</body>
+</html>

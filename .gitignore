@@ -2,6 +2,11 @@
 data/*.csv
 data/*.xlsx
 data/*.xls
+data/*.json
+
+/*.xlsx
+/*.xls
+/*.csv
 
 # Keep example/template data files if added later
 !data/*.example.csv
@@ -41,3 +46,19 @@ yarn-error.log*
 # Backup files
 *.bak
 *.backup
+
+docs/*.md
+CLAUDE.md
+
+.obsidian/
+
+__pycache__/
+*.py[cod]
+
+node_modules/
+package-lock.json
+
+reddit-scrape/
+
+scratchpad/
+*.tmp

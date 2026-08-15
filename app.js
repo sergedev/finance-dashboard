@@ -4,6 +4,9 @@ let categories = [];
 let snapshots = [];
 let charts = {};
 let selectedCategories = new Set();
+let uploadedFileName = null;
+let forceDemo = false;   // the demo button pins us to data_dummy/
+let trendGranularity = 'auto';   // 'auto' | 'day' | 'month'
 let currentTimeFilter = 'all';
 let exchangeRates = { AUD: 0.50 }; // Fallback rates
 let forecastMonths = 6; // Default forecast period
@@ -45,22 +48,41 @@ async function loadData() {
                 }
             };
 
-            try {
-                response = await fetch(`data/finance.2025.xlsx${cacheBuster}`, fetchOptions);
-                if (!response.ok) throw new Error('File not found');
-                console.log('✓ Loading real data from data/finance.2025.xlsx');
-                dataSource = 'real';
-            } catch (e) {
-                console.log('ℹ Loading dummy data from data_dummy/finance.2025.xlsx');
-                response = await fetch(`data_dummy/finance.2025.xlsx${cacheBuster}`, fetchOptions);
-                dataSource = 'dummy';
+            // newest format first, then the original layout
+            const candidates = forceDemo ? [
+                ['data_dummy/finance.v2.xlsx', 'dummy'],
+                ['data_dummy/finance.2025.xlsx', 'dummy']
+            ] : [
+                ['data/finance.v2.xlsx', 'real'],
+                ['data/finance.2025.xlsx', 'real'],
+                ['data_dummy/finance.v2.xlsx', 'dummy'],
+                ['data_dummy/finance.2025.xlsx', 'dummy']
+            ];
+            response = null;
+            for (const [path, source] of candidates) {
+                try {
+                    const r = await fetch(`${path}${cacheBuster}`, fetchOptions);
+                    if (!r.ok) continue;
+                    console.log(`✓ Loading ${path}`);
+                    response = r;
+                    dataSource = source;
+                    break;
+                } catch (e) { /* try the next one */ }
             }
+            if (!response) throw new Error('No workbook found in data/ or data_dummy/');
 
             arrayBuffer = await response.arrayBuffer();
         }
 
         // Parse Excel file
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+        // v2 workbooks have per-bank sheets described by _Accounts, and no
+        // Transactions sheet - categories are derived, not stored.
+        if (workbook.Sheets['_Accounts']) {
+            loadV2Workbook(arrayBuffer, workbook, dataSource);
+            return;
+        }
 
         // Extract data from each sheet
         const transactionsSheet = workbook.Sheets['Transactions'];
@@ -100,24 +122,122 @@ async function loadData() {
 
     } catch (error) {
         console.error('Error loading data:', error);
-        alert('Error loading data. Please ensure you have uploaded a file or that finance.2025.xlsx is in the data/ or data_dummy/ folder.');
+        showLoadProblem(error);
     }
 }
 
+/**
+ * v2 workbook: bank sheets + rules, categories derived by the engine.
+ *
+ * The charts still want a flat array of {Date, Amount, Category, ...}, so the
+ * engine's output is adapted into that shape rather than rewriting every chart.
+ * The Review component owns the data from here on and tells us when it changes.
+ */
+let reviewMounted = false;
+let knownCategories = '';
+
+function loadV2Workbook(arrayBuffer, workbook, dataSource) {
+    const model = Engine.readWorkbook(arrayBuffer);
+
+    // Snapshots are unchanged between v1 and v2
+    const snapshotsSheet = workbook.Sheets['Snapshots'];
+    snapshots = snapshotsSheet
+        ? XLSX.utils.sheet_to_json(snapshotsSheet).map(row => ({
+            ...row,
+            Balance: parseFloat(row.Balance) || 0,
+            Interest_Rate: parseFloat(row.Interest_Rate) || 0,
+            Date: parseExcelDate(row.Date)
+        }))
+        : [];
+
+    if (!reviewMounted) {
+        Review.mount(document.getElementById('reviewRoot'));
+        Review.onChange(applyReviewData);
+        reviewMounted = true;
+    }
+
+    Review.load(model, uploadedFileName || 'finance.xlsx');
+    updateDataSourceBanner(dataSource);
+    if (snapshots.length) initializeNetWorth();
+}
+
+/** Engine output -> the flat shape the existing charts expect. */
+function applyReviewData(txs, results) {
+    transactions = txs.map((tx, i) => ({
+        Date: tx.date,
+        Amount: tx.amount || 0,
+        Balance: tx.balance || 0,
+        'Transaction Type': tx.type,
+        'Transaction Description': tx.description,
+        Category: results[i].category,
+        Account: tx.account
+    }));
+    categories = (Review.model().rules || []).map(r => ({
+        Keyword: r.match, Category: r.category
+    }));
+
+    // Re-run the whole init only when the category set itself changed,
+    // so a rule edit doesn't silently reset the user's filter checkboxes.
+    const cats = [...new Set(transactions.map(t => t.Category))].sort().join('|');
+    if (cats !== knownCategories) {
+        knownCategories = cats;
+        initializeDashboard();
+    } else {
+        updateDashboard();
+    }
+}
+
+/**
+ * Loading from disk needs a server: browsers block fetch() on file:// URLs, so
+ * opening index.html by double-clicking it can never read data_dummy/.
+ * Say that plainly instead of throwing a generic alert.
+ */
+function showLoadProblem(error) {
+    const banner = document.getElementById('dataSourceText');
+    const isFileUrl = window.location.protocol === 'file:';
+    setBannerIcon('i-alert');
+    banner.innerHTML = isFileUrl
+        ? 'Opened as a file, so the demo workbook can\'t be read. ' +
+          'Upload your workbook above, or serve the folder: ' +
+          '<code>python3 -m http.server 8000</code>'
+        : 'Couldn\'t load a workbook (' + String(error.message || error) +
+          '). Upload one above, or put finance.v2.xlsx in data/.';
+    // Stays in the layout either way — hiding it here would reflow the banner.
+    // On file:// there is nothing to reload, so it is disabled rather than removed.
+    setResetButton('Reload demo', !isFileUrl);
+}
+
 // Update the data source banner
+/** Point the banner's icon at one of the sprite symbols. */
+function setBannerIcon(name) {
+    const use = document.querySelector('.data-source-icon use');
+    if (use) use.setAttribute('href', '#' + name);
+}
+
+/**
+ * Set the reset button's label without disturbing its layout or its icon.
+ * Writing textContent on the button itself would delete the <svg> child.
+ */
+function setResetButton(label, enabled) {
+    document.getElementById('resetToDemoLabel').textContent = label;
+    document.getElementById('resetToDemo').disabled = !enabled;
+}
+
 function updateDataSourceBanner(source) {
     const banner = document.getElementById('dataSourceText');
-    const resetBtn = document.getElementById('resetToDemo');
 
     if (source === 'uploaded') {
-        banner.textContent = '✓ Using your uploaded data';
-        resetBtn.style.display = 'block';
+        setBannerIcon('i-check');
+        banner.textContent = 'Using your uploaded data';
+        setResetButton('Reset to demo', true);
     } else if (source === 'real') {
-        banner.textContent = '✓ Using real data from data/ folder';
-        resetBtn.style.display = 'none';
+        setBannerIcon('i-check');
+        banner.textContent = 'Using real data from the data/ folder';
+        setResetButton('Load demo data', true);
     } else {
-        banner.textContent = '📊 Using demo data - Upload your file to get started';
-        resetBtn.style.display = 'none';
+        setBannerIcon('i-chart');
+        banner.textContent = 'Using demo data — upload your workbook to get started';
+        setResetButton('Reload demo', true);
     }
 }
 
@@ -136,6 +256,8 @@ function handleFileUpload(event) {
     reader.onload = (e) => {
         try {
             uploadedFileData = e.target.result;
+            uploadedFileName = file.name;
+            forceDemo = false;
             console.log('✓ File uploaded successfully:', file.name);
             loadData();
         } catch (error) {
@@ -266,6 +388,43 @@ function parseDate(dateStr) {
 }
 
 // Initialize dashboard after data is loaded
+/**
+ * Categories with a continuous flow, as opposed to the occasional ones.
+ *
+ * A category counts as regular if it has transactions in at least half of the
+ * months it COULD have appeared in - counted from its own first transaction, so
+ * something that started recently but happens every month still qualifies.
+ * Transfers are never included; they are internal movement, not spending.
+ */
+function regularCategories() {
+    const months = {};
+    const first = {};
+    const allMonths = new Set();
+
+    transactions.forEach(t => {
+        if (!t.Date || isNaN(t.Date)) return;
+        const key = t.Date.getFullYear() * 12 + t.Date.getMonth();
+        allMonths.add(key);
+        if (!months[t.Category]) months[t.Category] = new Set();
+        months[t.Category].add(key);
+        if (first[t.Category] === undefined || key < first[t.Category]) first[t.Category] = key;
+    });
+
+    const latest = Math.max(...allMonths);
+    const regular = new Set();
+    Object.keys(months).forEach(cat => {
+        if (cat === 'Transfers') return;
+        // Uncategorized always shows: hiding un-triaged spending would quietly
+        // understate every total on the page.
+        if (cat === 'Uncategorized') { regular.add(cat); return; }
+        const possible = latest - first[cat] + 1;
+        // too new to judge - one purchase this month would otherwise score 1/1
+        if (possible < 3) return;
+        if (months[cat].size / possible >= 0.5) regular.add(cat);
+    });
+    return regular;
+}
+
 function initializeDashboard() {
     // Get unique categories from BOTH transactions AND categories.csv
     const categoriesFromCSV = [...new Set(categories.map(c => c.Category))].filter(cat => cat);
@@ -274,11 +433,10 @@ function initializeDashboard() {
     // Merge and deduplicate both sources
     const uniqueCategories = [...new Set([...categoriesFromCSV, ...categoriesFromTransactions])].sort();
 
-    // Initialize all categories as selected except Transfers
+    // Everything is selected by default; "Regular only" is an explicit choice,
+    // not a default that quietly hides a house purchase or a conference.
     uniqueCategories.forEach(cat => {
-        if (cat !== 'Transfers') {
-            selectedCategories.add(cat);
-        }
+        if (cat !== 'Transfers') selectedCategories.add(cat);
     });
 
     // Create category checkboxes
@@ -322,7 +480,32 @@ function setupEventListeners() {
     // Reset to demo data
     document.getElementById('resetToDemo').addEventListener('click', () => {
         uploadedFileData = null;
+        uploadedFileName = null;
+        forceDemo = true;          // always the dummy workbook, even if data/ exists
         loadData();
+    });
+
+    // Regular categories only
+    document.getElementById('selectRegular').addEventListener('click', () => {
+        const regular = regularCategories();
+        selectedCategories.clear();
+        regular.forEach(c => selectedCategories.add(c));
+        document.querySelectorAll('#categoryCheckboxes input').forEach(cb => {
+            cb.checked = selectedCategories.has(cb.value);
+        });
+        document.getElementById('toggleAll').textContent =
+            selectedCategories.size > 0 ? 'Deselect All' : 'Select All';
+        updateDashboard();
+    });
+
+    // Trend granularity: days or months, or let the range decide
+    document.querySelectorAll('.gran-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            trendGranularity = btn.dataset.gran;
+            document.querySelectorAll('.gran-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            updateDashboard();
+        });
     });
 
     // Time filter - Month select
@@ -485,79 +668,130 @@ function updateSummaryStats(stats) {
 }
 
 // Prepare data for monthly trend chart
-function getMonthlyTrendData(filteredTransactions) {
-    // Exclude Transfers
-    const transactionsForChart = filteredTransactions.filter(t => t.Category !== 'Transfers');
+/**
+ * The window the trend chart covers, derived from the TIME filter alone.
+ *
+ * Deliberately independent of the category filter: the x-axis must not shrink
+ * or shift when you tick a category off, otherwise it is impossible to see
+ * whether a bar moved or the axis did.
+ */
+function getTrendRange() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let start, end = today;
 
-    // Check if viewing a single month (format: YYYY-MM)
-    const isSingleMonth = currentTimeFilter && /^\d{4}-\d{2}$/.test(currentTimeFilter);
-
-    if (isSingleMonth) {
-        // Group by day for single month view
-        const dailyData = {};
-
-        transactionsForChart.forEach(t => {
-            const dayKey = `${t.Date.getFullYear()}-${String(t.Date.getMonth() + 1).padStart(2, '0')}-${String(t.Date.getDate()).padStart(2, '0')}`;
-
-            if (!dailyData[dayKey]) {
-                dailyData[dayKey] = { income: 0, expenses: 0 };
-            }
-
-            if (t.Amount > 0) {
-                dailyData[dayKey].income += t.Amount;
-            } else {
-                dailyData[dayKey].expenses += Math.abs(t.Amount);
-            }
-        });
-
-        // Sort by date
-        const sortedDays = Object.keys(dailyData).sort();
-
-        const labels = sortedDays.map(day => {
-            const [year, month, dayNum] = day.split('-');
-            const date = new Date(year, month - 1, dayNum);
-            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        });
-
-        const incomeData = sortedDays.map(day => dailyData[day].income);
-        const expenseData = sortedDays.map(day => dailyData[day].expenses);
-
-        return { labels, incomeData, expenseData };
+    if (currentTimeFilter && /^\d{4}-\d{2}$/.test(currentTimeFilter)) {
+        const [year, month] = currentTimeFilter.split('-').map(Number);
+        start = new Date(year, month - 1, 1);
+        const lastOfMonth = new Date(year, month, 0);
+        end = lastOfMonth < today ? lastOfMonth : today;
+    } else if (currentTimeFilter === '30days') {
+        start = new Date(today);
+        start.setDate(start.getDate() - 29);
+    } else if (currentTimeFilter === '6months') {
+        start = new Date(today);
+        start.setMonth(start.getMonth() - 6);
+    } else if (currentTimeFilter === 'ytd') {
+        start = new Date(today.getFullYear(), 0, 1);
     } else {
-        // Group by month for multi-month view
-        const monthlyData = {};
-
-        transactionsForChart.forEach(t => {
-            const monthKey = `${t.Date.getFullYear()}-${String(t.Date.getMonth() + 1).padStart(2, '0')}`;
-
-            if (!monthlyData[monthKey]) {
-                monthlyData[monthKey] = { income: 0, expenses: 0 };
-            }
-
-            if (t.Amount > 0) {
-                monthlyData[monthKey].income += t.Amount;
-            } else {
-                monthlyData[monthKey].expenses += Math.abs(t.Amount);
-            }
-        });
-
-        // Sort by date
-        const sortedMonths = Object.keys(monthlyData).sort();
-
-        const labels = sortedMonths.map(month => {
-            const [year, monthNum] = month.split('-');
-            const date = new Date(year, monthNum - 1);
-            return date.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
-        });
-
-        const incomeData = sortedMonths.map(month => monthlyData[month].income);
-        const expenseData = sortedMonths.map(month => monthlyData[month].expenses);
-
-        return { labels, incomeData, expenseData };
+        // everything: first transaction ever recorded, whatever is selected
+        const dates = transactions.map(t => t.Date).filter(d => d && !isNaN(d));
+        start = dates.length ? new Date(Math.min(...dates)) : new Date(today);
+        start = new Date(start.getFullYear(), start.getMonth(), 1);
+        const latest = dates.length ? new Date(Math.max(...dates)) : today;
+        if (latest > end) end = latest;
     }
+    return { start, end };
 }
 
-// Prepare data for category charts
+/**
+ * Auto granularity follows the chosen period: a month or less shows days, six
+ * months shows week-sized segments (four per month - daily would be ~180 bars
+ * of a few pixels), and the open-ended periods show months.
+ */
+function getTrendUnit(range) {
+    if (trendGranularity !== 'auto') return trendGranularity;
+    if (currentTimeFilter === 'ytd' || currentTimeFilter === 'all') return 'month';
+    if (currentTimeFilter === '6months') return 'week';
+    return 'day';
+}
+
+/**
+ * Week buckets are aligned to the month, starting on the 1st, 8th, 15th and
+ * 22nd, so a column never straddles two months and the month boundary always
+ * falls on every fourth tick.  The last one absorbs the 29th onwards.
+ */
+function weekSegment(date) {
+    return Math.min(3, Math.floor((date.getDate() - 1) / 7));
+}
+
+function weekKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-w${weekSegment(date)}`;
+}
+
+function weekStart(date) {
+    return new Date(date.getFullYear(), date.getMonth(), weekSegment(date) * 7 + 1);
+}
+
+function getMonthlyTrendData(filteredTransactions) {
+    const transactionsForChart = filteredTransactions.filter(t => t.Category !== 'Transfers');
+    const range = getTrendRange();
+    const unit = getTrendUnit(range);
+
+    // Every bucket in the window exists up front, empty ones included, so the
+    // axis is identical no matter which categories are ticked.
+    const buckets = [];
+    const index = {};
+    if (unit === 'day') {
+        for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            index[key] = buckets.length;
+            buckets.push({ key, date: new Date(d), income: 0, expenses: 0 });
+        }
+    } else if (unit === 'week') {
+        let d = weekStart(range.start);
+        while (d <= range.end) {
+            index[weekKey(d)] = buckets.length;
+            buckets.push({ key: weekKey(d), date: new Date(d), income: 0, expenses: 0 });
+            d = weekSegment(d) === 3
+                ? new Date(d.getFullYear(), d.getMonth() + 1, 1)
+                : new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7);
+        }
+    } else {
+        const d = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+        while (d <= range.end) {
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            index[key] = buckets.length;
+            buckets.push({ key, date: new Date(d), income: 0, expenses: 0 });
+            d.setMonth(d.getMonth() + 1);
+        }
+    }
+
+    transactionsForChart.forEach(t => {
+        if (!t.Date || isNaN(t.Date)) return;
+        const key = unit === 'day'
+            ? `${t.Date.getFullYear()}-${String(t.Date.getMonth() + 1).padStart(2, '0')}-${String(t.Date.getDate()).padStart(2, '0')}`
+            : unit === 'week'
+                ? weekKey(t.Date)
+                : `${t.Date.getFullYear()}-${String(t.Date.getMonth() + 1).padStart(2, '0')}`;
+        const i = index[key];
+        if (i === undefined) return;                 // outside the window
+        if (t.Amount > 0) buckets[i].income += t.Amount;
+        else buckets[i].expenses += Math.abs(t.Amount);
+    });
+
+    const labels = buckets.map(b => unit === 'month'
+        ? b.date.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
+        : b.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+
+    return {
+        labels,
+        incomeData: buckets.map(b => b.income),
+        expenseData: buckets.map(b => b.expenses),
+        unit
+    };
+}
+
 function getCategoryData(filteredTransactions) {
     // Exclude Income and Transfers for expense breakdown
     const expenseTransactions = filteredTransactions.filter(t =>
@@ -771,6 +1005,12 @@ function updateCategoryBarChart(data) {
 }
 
 // Main update function
+function setTrendTitle(unit) {
+    const el = document.getElementById('trendChartTitle');
+    const word = unit === 'day' ? 'Daily' : (unit === 'week' ? 'Weekly' : 'Monthly');
+    if (el) el.textContent = word + ' Income vs Expenses';
+}
+
 function updateDashboard() {
     const filtered = getFilteredTransactions();
 
@@ -787,6 +1027,7 @@ function updateDashboard() {
 
     // Update charts
     const monthlyData = getMonthlyTrendData(filtered);
+    setTrendTitle(monthlyData.unit);
     updateMonthlyTrendChart(monthlyData);
 
     const categoryData = getCategoryData(filtered);
