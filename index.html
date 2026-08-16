@@ -89,6 +89,7 @@
 </svg>
 
     <div class="container">
+        <div class="themepick"><a href="index.html" aria-current="page">Original</a><a href="index-panel.html">Panel</a><a href="index-warm.html">Warm</a></div>
         <!-- ====== DATA SOURCE SECTION ====== -->
         <div class="data-source-banner" id="dataSourceBanner">
             <div class="data-source-info">
@@ -126,22 +127,22 @@
                 <div class="networth-card isa-card">
                     <div class="networth-icon"><svg class="icon" aria-hidden="true"><use href="#i-bank"></use></svg></div>
                     <div class="networth-content">
-                        <h4>Total in ISAs</h4>
+                        <h4>In ISAs</h4>
                         <p class="networth-value" id="totalISAs">£0.00</p>
                     </div>
                 </div>
                 <div class="networth-card liquid-card">
                     <div class="networth-icon"><svg class="icon" aria-hidden="true"><use href="#i-coins"></use></svg></div>
                     <div class="networth-content">
-                        <h4>Total Liquid</h4>
-                        <p class="networth-value" id="totalLiquid">£0.00</p>
+                        <h4>UK Liquid</h4>
+                        <p class="networth-value" id="ukLiquid">£0.00</p>
                     </div>
                 </div>
                 <div class="networth-card foreign-card">
                     <div class="networth-icon"><svg class="icon" aria-hidden="true"><use href="#i-globe"></use></svg></div>
                     <div class="networth-content">
-                        <h4>Foreign Holdings</h4>
-                        <p class="networth-value" id="foreignHoldings">0 AUD (£0.00)</p>
+                        <h4>Overseas</h4>
+                        <p class="networth-value" id="overseas">£0.00</p>
                     </div>
                 </div>
             </div>
@@ -172,7 +173,7 @@
                 <div class="historical-section">
                     <h3>Net Worth Over Time</h3>
                     <div class="chart-container">
-                        <canvas id="networthHistoryChart"></canvas>
+                        <div class="chart"><canvas id="networthHistoryChart"></canvas></div>
                     </div>
                     <div class="growth-stats">
                         <div class="growth-stat">
@@ -237,7 +238,7 @@
 
                     <!-- Right: Forecast Chart -->
                     <div class="forecast-chart-section">
-                        <canvas id="forecastChart"></canvas>
+                        <div class="chart"><canvas id="forecastChart"></canvas></div>
                     </div>
                 </div>
             </div>
@@ -343,30 +344,36 @@
                         <button class="gran-btn" data-gran="month">Months</button>
                     </div>
                 </div>
-                <canvas id="monthlyTrendChart"></canvas>
+                <div class="chart"><canvas id="monthlyTrendChart"></canvas></div>
             </div>
 
             <!-- Expenses by Category (Pie) -->
             <div class="chart-container half">
                 <h3>Expenses by Category</h3>
-                <canvas id="categoryPieChart"></canvas>
+                <div class="chart"><canvas id="categoryPieChart"></canvas></div>
             </div>
 
             <!-- Category Breakdown (Bar) -->
             <div class="chart-container half">
                 <h3>Top Spending Categories</h3>
-                <canvas id="categoryBarChart"></canvas>
+                <div class="chart"><canvas id="categoryBarChart"></canvas></div>
             </div>
         </section>
 
-        <footer>
-            <p>Dashboard last updated: <span id="lastUpdated"></span></p>
-        </footer>
     
         <section class="review-section">
             <h2 class="section-header"><svg class="icon head" aria-hidden="true"><use href="#i-receipt"></use></svg> Transactions, rules &amp; categories</h2>
             <div id="reviewRoot"></div>
         </section>
+
+        <section class="review-section breakdown-section">
+            <h2 class="section-header"><svg class="icon head" aria-hidden="true"><use href="#i-calendar"></use></svg> Category breakdown</h2>
+            <div id="breakdownRoot"></div>
+        </section>
+
+        <footer>
+            <p>Dashboard last updated: <span id="lastUpdated"></span></p>
+        </footer>
 </div>
 
     <script src="engine.js"></script>

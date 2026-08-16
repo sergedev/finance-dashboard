@@ -1,0 +1,67 @@
+/* Panel — white panels with a 1px border on a tinted canvas. The denser of
+   the two themes. This file is the reference for the full token set. */
+:root {
+    --bg:            #f5f6f8;
+    --surface:       #ffffff;
+    --surface-2:     #eef0f3;
+    --border:        #e2e5ea;
+    --border-strong: #cbd0d8;
+
+    --text:          #1a1d23;
+    --text-dim:      #495059;
+    --text-faint:    #7c848f;
+
+    --accent:        #4f46e5;
+    --accent-ink:    #ffffff;
+    --accent-text:   #4338ca;
+    --pos:           #087f5b;
+    --neg:           #c92a42;
+
+    --panel-bg:      #ffffff;
+    --panel-border:  1px solid var(--border);
+    --panel-radius:  10px;
+    --panel-pad:     var(--s4);
+    --panel-shadow:  none;
+    --btn-radius:    7px;
+
+    --kpi-bg:        #ffffff;
+    --kpi-border:    1px solid var(--border);
+    --kpi-pad:       var(--s4);
+    --kpi-size:      1.4rem;
+    --kpi-icon-bg:   var(--surface-2);
+    --kpi-icon-ink:  var(--accent-text);
+
+    --th-bg:         #eef0f3;
+    --th-hover:      #e2e5ea;
+    --row-hover:     #f7f8fa;
+
+    --topbar-bg:     #ffffff;
+    --topbar-ink:    var(--text);
+    --topbar-dim:    var(--text-faint);
+    --topbar-border: var(--border);
+
+
+    --head-weight: 600;
+    --head-size:   1rem;
+}
+
+/* Denser than warm. */
+body { font-size: 14px; }
+table.data { font-size: 0.82rem; }
+table.data th, table.data td { padding: 6px var(--s3); }
+
+/* One hue per metric, from a single palette. */
+.kpi.t-total  .kpi-icon { background: #eef0ff; color: #4338ca; }
+.kpi.t-isa    .kpi-icon { background: #e7f6f0; color: #087f5b; }
+.kpi.t-liquid .kpi-icon { background: #fdf2e2; color: #b4690e; }
+.kpi.t-fx     .kpi-icon { background: #f3ecfd; color: #7c3aed; }
+.kpi.t-in     .kpi-icon { background: #e7f6f0; color: #087f5b; }
+.kpi.t-out    .kpi-icon { background: #fdecee; color: #c92a42; }
+.kpi.t-net    .kpi-icon { background: #eef0ff; color: #4338ca; }
+.kpi.t-rate   .kpi-icon { background: #f3ecfd; color: #7c3aed; }
+.kpi.t-avg    .kpi-icon { background: #fdf2e2; color: #b4690e; }
+
+.seg { background: var(--surface-2); border-color: var(--border); }
+.seg button.active { box-shadow: 0 0 0 1px var(--border-strong); }
+
+.sec-head { border-bottom-color: var(--border-strong); }

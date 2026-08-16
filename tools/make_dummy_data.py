@@ -18,6 +18,13 @@ Outputs
       the splice point) and then runs three weeks past it.  The name is arbitrary on purpose -
       routing is by column headers, not by filename.
 
+The span is January 2025 to August 2026 - twenty months, so the trend chart and
+the category x period breakdown both have a real history to draw.  It is not
+one month repeated: salary and rent step up on set dates, energy and
+discretionary spending follow a seasonal curve, spending scales with the pay
+rises, and one-off events (a holiday, Christmas, a flat move) give individual
+months their own shape.
+
 Everything is deterministic - re-running produces identical files.
 """
 
@@ -37,11 +44,11 @@ OUT_CSV_DIR = os.path.join(ROOT, "data_dummy", "incoming")
 
 RNG = random.Random(20260815)
 
-START = date(2026, 1, 1)
+START = date(2025, 1, 1)
 STORED_END = date(2026, 8, 10)      # last transaction already in the workbook
 CSV_START = date(2026, 7, 15)       # the bank only offers a 90-day window
 CSV_END = date(2026, 8, 30)         # and it runs well past the stored data
-OPENING_BALANCE = 2480.15
+OPENING_BALANCE = 3400.00           # the balance carried in from before START
 
 
 def dmy(d):
@@ -163,6 +170,32 @@ EVERYDAY = [
 
 # Rows on exact dates, to exercise specific engine behaviour.
 SPECIALS = [
+    # --- 2025: one-offs that give the earlier months their own shape --------
+    (date(2025, 1, 18), "11:20", "Purchase", "ARGOS LTD 4471",          -189.99),
+    (date(2025, 2, 14), "20:12", "Purchase", "SHOREDITCH HOUSE LONDON",  -38.00),
+    (date(2025, 3, 22), "10:05", "Purchase", "HALFORDS 0912",            -64.50),
+    (date(2025, 4, 11), "09:26",
+     "Purchase | EUR 186.00 | FX rate £1 = €1.1701", "RYANAIR DUBLIN",     -158.96),
+    (date(2025, 4, 12), "18:40", "Purchase", "BOOKING.COM AMSTERDAM",   -224.00),
+    (date(2025, 5, 30), "14:18", "Purchase", "ODEON CINEMAS LTD",        -19.50),
+    (date(2025, 6, 14), "12:02", "Purchase", "UNIQLO UK LTD",            -62.90),
+    (date(2025, 7, 26), "16:55", "Purchase", "DECATHLON UK",             -78.40),
+    (date(2025, 8, 9),  "13:31", "Purchase", "SQ *THE COFFEE JAR",        -3.90),
+    (date(2025, 9, 6),  "10:44", "Purchase", "IKEA LONDON",             -312.75),
+    (date(2025, 10, 3), "19:22", "Purchase", "DELIVEROO",                -34.20),
+    (date(2025, 11, 28), "21:09", "Purchase", "AMAZON.CO.UK*7K2LM",     -143.60),
+    (date(2025, 12, 6),  "15:47", "Purchase", "JOHN LEWIS OXFORD ST",   -204.30),
+    (date(2025, 12, 20), "12:15", "Purchase", "TESCO EXTRA 1102",       -128.40),
+    (date(2025, 12, 24), "17:03", "Purchase", "ZETTLE_*XMAS TREES",      -45.00),
+
+    # --- moving flat, Jan-Feb 2026 ----------------------------------------
+    # The hire car is the worked example in docs/todo.md item 1: it lands in
+    # Housing because it was part of the move, which is why that category
+    # needs splitting.
+    (date(2026, 1, 24), "08:30", "Purchase", "ENTERPRISE RENT-A-CAR",   -168.00),
+    (date(2026, 1, 31), "14:12", "Payment",  "LANDLORD DEPOSIT",       -1740.00),
+    (date(2026, 2, 3),  "11:26", "Purchase", "IKEA LONDON",             -286.40),
+
     (date(2026, 2, 14), "20:41", "Purchase", "SHOREDITCH HOUSE LONDON",  -42.00),
     (date(2026, 3, 7),  "13:05", "Purchase", "TESCO PETROL 3421",        -58.20),
     (date(2026, 4, 17), "09:26",
@@ -204,10 +237,93 @@ NEW_ROWS = [
     (date(2026, 8, 30), "11:19", "Purchase", "TESCO EXTRA 1102",         -74.25),
 ]
 
-BANK2 = [
-    (date(2026, m, 20), "Credit", "SAVINGS TRANSFER IN", 500.00)
-    for m in range(1, 9)
+def _bank2_rows():
+    """The matching leg of TRANSFER TO SAVINGS, every month of the span."""
+    rows, d = [], date(START.year, START.month, 20)
+    while d <= STORED_END:
+        rows.append((d, "Credit", "SAVINGS TRANSFER IN",
+                     600.00 if d >= date(2026, 1, 1) else 400.00))
+        d = date(d.year + (d.month == 12), d.month % 12 + 1, 20)
+    return rows
+
+
+BANK2 = _bank2_rows()
+
+
+# ---------------------------------------------------------------------------
+# Drift over the 20-month span, so the series reads as a life rather than one
+# month repeated.  Each is the value in force from that date onwards.
+# ---------------------------------------------------------------------------
+SALARY_STEPS = [
+    (date(2025, 1, 1), 3180.00),
+    (date(2025, 7, 1), 3310.00),    # mid-year review
+    (date(2026, 1, 1), 3520.00),    # promotion
+    (date(2026, 4, 1), 3850.00),
 ]
+
+RENT_STEPS = [
+    (date(2025, 1, 1), 1280.00),
+    (date(2025, 9, 1), 1340.00),    # renewal
+    (date(2026, 2, 1), 1450.00),    # moved flat
+]
+
+# Energy is seasonal: roughly double in midwinter against a summer baseline.
+ENERGY_SEASON = {
+    1: 1.55, 2: 1.48, 3: 1.25, 4: 1.00, 5: 0.78, 6: 0.62,
+    7: 0.58, 8: 0.60, 9: 0.74, 10: 1.02, 11: 1.30, 12: 1.52,
+}
+
+# Discretionary spending is not flat across the year either.
+SPEND_SEASON = {
+    1: 0.82, 2: 0.92, 3: 1.00, 4: 1.04, 5: 1.06, 6: 1.10,
+    7: 1.12, 8: 1.08, 9: 1.00, 10: 1.02, 11: 1.08, 12: 1.28,
+}
+
+
+def stepped(steps, when):
+    """The last value whose start date is on or before `when`."""
+    value = steps[0][1]
+    for start, amount in steps:
+        if when >= start:
+            value = amount
+    return value
+
+
+def monthly_amount(desc, base, when):
+    """A recurring row's amount on a given date.  0 means "no row this month"."""
+    if desc == "ACME LTD SALARY":
+        return stepped(SALARY_STEPS, when)
+    if desc == "LANDLORD RENT PAYMENT":
+        return -stepped(RENT_STEPS, when)
+    if desc == "OCTOPUS ENERGY LTD":
+        return -round(abs(base) * ENERGY_SEASON[when.month], 2)
+    if desc == "COUNCIL TAX LB HACKNEY":
+        # councils bill over ten months; February and March are free
+        return 0.0 if when.month in (2, 3) else base
+    if desc == "TRANSFER TO SAVINGS":
+        # the standing order went up once the pay rise landed
+        return -600.00 if when >= date(2026, 1, 1) else -400.00
+    return base
+
+
+# Spending rises with the pay rises rather than staying flat for 20 months.
+LIFESTYLE_STEPS = [
+    (date(2025, 1, 1), 1.00),
+    (date(2026, 1, 1), 1.16),
+]
+
+
+def everyday_chance(when):
+    """Per-merchant chance of a purchase on this day.
+
+    Calibrated so discretionary spending roughly consumes what is left after
+    the recurring bills, leaving a small surplus - which is what the rising
+    net-worth snapshots imply.
+    """
+    chance = 0.118
+    if when.weekday() >= 4:          # Friday to Sunday
+        chance += 0.032
+    return chance * SPEND_SEASON[when.month]
 
 
 def money(low, high):
@@ -227,10 +343,15 @@ def build_bank1(end):
     while d <= end:
         for day, tm, typ, desc, amt in MONTHLY:
             if d.day == day:
-                rows.append((d, tm, typ, desc, amt))
+                amount = monthly_amount(desc, amt, d)
+                if amount:
+                    rows.append((d, tm, typ, desc, amount))
+        chance = everyday_chance(d)
+        scale = SPEND_SEASON[d.month] * stepped(LIFESTYLE_STEPS, d)
         for desc, typ, low, high, times in EVERYDAY:
-            if RNG.random() < 0.115:
-                rows.append((d, RNG.choice(times), typ, desc, -money(low, high)))
+            if RNG.random() < chance:
+                amount = money(low, high) * scale
+                rows.append((d, RNG.choice(times), typ, desc, -round(amount, 2)))
         d += timedelta(days=1)
 
     for row in SPECIALS + NEW_ROWS:
@@ -265,8 +386,8 @@ SNAPSHOT_DATES = [
 
 # balances per date, in each account's own currency
 SNAPSHOT_SERIES = [
-    ("Chase Current", "GBP", None, None, "Main spending account",
-     [1980, 2140, 2075, 2260, 2410, 2295, 2480, 2610, 2540, 2730, 2884]),
+    # Chase Current is filled from the bank rows themselves - see chase_series()
+    ("Chase Current", "GBP", None, None, "Main spending account", None),
     ("Monzo Savings", "GBP", 4.10, "AER", "Easy access",
      [6400, 6900, 7400, 7950, 8450, 8100, 8600, 9200, 9800, 10400, 11050]),
     ("Premium Bonds", "GBP", None, None, "NS&I, no interest, prize draw",
@@ -278,11 +399,30 @@ SNAPSHOT_SERIES = [
 ]
 
 
-def snapshot_rows():
+def chase_series(bank1):
+    """The running balance on each snapshot date.
+
+    Taken from the bank rows rather than written by hand, so the current
+    account's snapshots and its statement can never disagree.
+    """
+    out = []
+    for when in SNAPSHOT_DATES:
+        balance = OPENING_BALANCE
+        for row in bank1:
+            if row[0] > when:
+                break
+            balance = row[6]
+        out.append(round(balance))
+    return out
+
+
+def snapshot_rows(bank1):
     rows = []
+    chase = chase_series(bank1)
     for i, d in enumerate(SNAPSHOT_DATES):
         for name, currency, rate, rate_type, note, balances in SNAPSHOT_SERIES:
-            rows.append((dmy(d), name, balances[i], currency,
+            value = chase[i] if balances is None else balances[i]
+            rows.append((dmy(d), name, value, currency,
                          rate if rate is not None else "",
                          rate_type if rate_type else "", note))
     return rows
@@ -470,7 +610,7 @@ def build_workbook():
     write_sheet(
         wb.create_sheet("Snapshots"),
         ["Date", "Account_Name", "Balance", "Currency", "Interest_Rate", "Rate_Type", "Notes"],
-        snapshot_rows(),
+        snapshot_rows(bank1),
         [11, 24, 12, 10, 14, 11, 30],
     )
 

@@ -151,7 +151,9 @@ function loadV2Workbook(arrayBuffer, workbook, dataSource) {
         : [];
 
     if (!reviewMounted) {
-        Review.mount(document.getElementById('reviewRoot'));
+        Review.mount(document.getElementById('reviewRoot'), { defaultTab: 'categories' });
+        const breakdownHost = document.getElementById('breakdownRoot');
+        if (breakdownHost) Review.mountBreakdown(breakdownHost);
         Review.onChange(applyReviewData);
         reviewMounted = true;
     }
@@ -867,7 +869,7 @@ function updateMonthlyTrendChart(data) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             animation: false,
             plugins: {
                 legend: {
@@ -923,7 +925,7 @@ function updateCategoryPieChart(data) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             animation: false,
             plugins: {
                 legend: {
@@ -976,7 +978,7 @@ function updateCategoryBarChart(data) {
         options: {
             indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             animation: false,
             plugins: {
                 legend: {
@@ -1109,39 +1111,42 @@ function getCurrentSnapshot() {
     return Object.values(accountSnapshots).filter(acc => acc.Balance > 0);
 }
 
-// Update net worth summary cards
+/**
+ * Net worth split three ways, by how reachable the money is:
+ * ISAs (tax-wrapped, awkward to withdraw), UK liquid, and everything held in
+ * another currency. Each account falls in exactly one, so the three add up to
+ * net worth. Currency is tested first, so an overseas account is never also
+ * counted as UK liquid.
+ */
 function updateNetWorthSummary() {
     const current = getCurrentSnapshot();
+    const isISA = acc => /\bISAs?\b/i.test(acc.Account_Name || '');
 
-    let totalNetWorth = 0;
-    let totalISAs = 0;
-    let totalLiquid = 0;
-    let foreignTotal = 0;
-    let foreignGBP = 0;
+    let netWorth = 0, isas = 0, ukLiquid = 0, overseasGBP = 0;
+    const overseas = new Map();          // currency -> total in that currency
 
     current.forEach(acc => {
-        const gbpValue = convertToGBP(acc.Balance, acc.Currency);
-        totalNetWorth += gbpValue;
+        const gbp = convertToGBP(acc.Balance, acc.Currency);
+        netWorth += gbp;
 
-        // ISA calculation
-        if (acc.Account_Name.toUpperCase().includes('ISA')) {
-            totalISAs += gbpValue;
-        } else {
-            totalLiquid += gbpValue;
-        }
-
-        // Foreign holdings
         if (acc.Currency !== 'GBP') {
-            foreignTotal += acc.Balance;
-            foreignGBP += gbpValue;
+            overseasGBP += gbp;
+            overseas.set(acc.Currency, (overseas.get(acc.Currency) || 0) + acc.Balance);
+        } else if (isISA(acc)) {
+            isas += gbp;
+        } else {
+            ukLiquid += gbp;
         }
     });
 
-    document.getElementById('totalNetWorth').textContent = `£${formatCurrency(totalNetWorth)}`;
-    document.getElementById('totalISAs').textContent = `£${formatCurrency(totalISAs)}`;
-    document.getElementById('totalLiquid').textContent = `£${formatCurrency(totalLiquid)}`;
-    document.getElementById('foreignHoldings').innerHTML =
-        `${formatCurrency(foreignTotal)} AUD <span class="conversion-hint">(£${formatCurrency(foreignGBP)})</span>`;
+    const native = [...overseas].map(([ccy, amt]) => `${formatCurrency(amt)} ${ccy}`).join(' + ');
+
+    document.getElementById('totalNetWorth').textContent = `£${formatCurrency(netWorth)}`;
+    document.getElementById('totalISAs').textContent = `£${formatCurrency(isas)}`;
+    document.getElementById('ukLiquid').textContent = `£${formatCurrency(ukLiquid)}`;
+    document.getElementById('overseas').innerHTML = native
+        ? `${native} <span class="conversion-hint">£${formatCurrency(overseasGBP)}</span>`
+        : `£${formatCurrency(0)}`;
 }
 
 // Update holdings table
@@ -1172,9 +1177,9 @@ function updateHoldingsTable() {
 
         row.innerHTML = `
             <td>${acc.Account_Name}</td>
-            <td data-value="${acc.Balance}">${formatCurrency(acc.Balance)}</td>
-            <td>${acc.Currency}</td>
-            <td data-value="${gbpValue}">£${formatCurrency(gbpValue)}</td>
+            <td class="n" data-value="${acc.Balance}">${formatCurrency(acc.Balance)}</td>
+            <td class="c">${acc.Currency}</td>
+            <td class="n" data-value="${gbpValue}">£${formatCurrency(gbpValue)}</td>
             <td data-value="${acc.Interest_Rate || 0}">${interestDisplay}</td>
             <td data-value="${acc.Date ? acc.Date.getTime() : 0}">${lastUpdated}</td>
         `;
@@ -1183,30 +1188,32 @@ function updateHoldingsTable() {
     });
 }
 
+/** Snapshot totals over time, oldest first. Shared by the history and forecast charts. */
+function netWorthHistory() {
+    const byDate = new Map();
+    snapshots.forEach(snap => {
+        if (snap.Balance === 0) return;                 // closed account
+        const key = snap.Date.toISOString().split('T')[0];
+        if (!byDate.has(key)) byDate.set(key, { date: snap.Date, total: 0 });
+        byDate.get(key).total += convertToGBP(snap.Balance, snap.Currency);
+    });
+    return [...byDate.values()].sort((a, b) => a.date - b.date);
+}
+
+function monthLabel(d) {
+    return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+}
+
+function addMonths(d, n) {
+    const out = new Date(d.getTime());
+    out.setMonth(out.getMonth() + n);
+    return out;
+}
+
 // Update historical net worth chart
 function updateHistoricalChart() {
-    // Group snapshots by date and calculate total net worth
-    const dateGroups = {};
-
-    snapshots.forEach(snap => {
-        if (snap.Balance === 0) return; // Skip closed accounts
-
-        const dateKey = snap.Date.toISOString().split('T')[0];
-        if (!dateGroups[dateKey]) {
-            dateGroups[dateKey] = { date: snap.Date, total: 0 };
-        }
-
-        const gbpValue = convertToGBP(snap.Balance, snap.Currency);
-        dateGroups[dateKey].total += gbpValue;
-    });
-
-    // Sort by date
-    const sortedData = Object.values(dateGroups).sort((a, b) => a.date - b.date);
-
-    const labels = sortedData.map(d => d.date.toLocaleDateString('en-GB', {
-        month: 'short',
-        year: '2-digit'
-    }));
+    const sortedData = netWorthHistory();
+    const labels = sortedData.map(d => monthLabel(d.date));
     const data = sortedData.map(d => d.total);
 
     // Calculate growth stats
@@ -1248,7 +1255,7 @@ function updateHistoricalChart() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             animation: false,
             plugins: {
                 legend: {
@@ -1347,9 +1354,9 @@ function updateForecast() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td data-value="${f.name}">${f.name}</td>
-            <td data-value="${f.current}">£${formatCurrency(f.current)}</td>
-            <td data-value="${f.projected}">£${formatCurrency(f.projected)}</td>
-            <td data-value="${f.growth}" class="${f.growth >= 0 ? 'positive-growth' : 'negative-growth'}">
+            <td class="n" data-value="${f.current}">£${formatCurrency(f.current)}</td>
+            <td class="n" data-value="${f.projected}">£${formatCurrency(f.projected)}</td>
+            <td data-value="${f.growth}" class="n ${f.growth >= 0 ? 'positive-growth' : 'negative-growth'}">
                 £${formatCurrency(Math.abs(f.growth))}
                 ${f.growth >= 0 ? '↑' : '↓'}
             </td>
@@ -1361,48 +1368,47 @@ function updateForecast() {
     updateForecastChart(forecasts);
 }
 
-// Update forecast chart
+/**
+ * Recorded history, then the projection continuing from where it ends.
+ *
+ * Two datasets over one label axis, each null-padded on the side it does not
+ * cover. They overlap by a single point — the last snapshot — so the projection
+ * visibly grows out of the actual line instead of starting in mid-air.
+ */
 function updateForecastChart(forecasts) {
     const current = getCurrentSnapshot();
     const currentTotal = current.reduce((sum, acc) =>
         sum + convertToGBP(acc.Balance, acc.Currency), 0);
+    const contribution = parseFloat(document.getElementById('monthlyContribution').value) || 0;
 
-    // Generate monthly data points
-    const labels = [];
-    const data = [];
-    const monthlyContribution = parseFloat(document.getElementById('monthlyContribution').value) || 0;
-
-    for (let month = 0; month <= forecastMonths; month++) {
-        labels.push(month === 0 ? 'Now' : `+${month}mo`);
-
-        if (month === 0) {
-            data.push(currentTotal);
-        } else {
-            // Recalculate for this specific month
-            let totalForMonth = 0;
-            current.forEach(acc => {
-                const principal = convertToGBP(acc.Balance, acc.Currency);
-                const annualRate = acc.Interest_Rate / 100;
-                const monthlyRate = annualRate / 12;
-
-                let futureValue = principal * Math.pow(1 + monthlyRate, month);
-
-                if (monthlyContribution > 0) {
-                    const proportion = principal / currentTotal;
-                    const accountContribution = monthlyContribution * proportion;
-
-                    if (monthlyRate > 0) {
-                        futureValue += accountContribution *
-                            (Math.pow(1 + monthlyRate, month) - 1) / monthlyRate;
-                    } else {
-                        futureValue += accountContribution * month;
-                    }
-                }
-
-                totalForMonth += futureValue;
-            });
-            data.push(totalForMonth);
+    // Compound each account at its own rate, then add its share of the
+    // monthly contribution as an annuity.
+    const projectedAt = month => current.reduce((sum, acc) => {
+        const principal = convertToGBP(acc.Balance, acc.Currency);
+        const monthlyRate = (acc.Interest_Rate / 100) / 12;
+        let value = principal * Math.pow(1 + monthlyRate, month);
+        if (contribution > 0 && currentTotal > 0) {
+            const share = contribution * (principal / currentTotal);
+            value += monthlyRate > 0
+                ? share * (Math.pow(1 + monthlyRate, month) - 1) / monthlyRate
+                : share * month;
         }
+        return sum + value;
+    }, 0);
+
+    const history = netWorthHistory();
+    if (!history.length) history.push({ date: new Date(), total: currentTotal });
+    const lastDate = history[history.length - 1].date;
+
+    const labels = history.map(h => monthLabel(h.date));
+    const actual = history.map(h => h.total);
+    const projected = new Array(history.length).fill(null);
+    projected[history.length - 1] = currentTotal;      // the shared join point
+
+    for (let month = 1; month <= forecastMonths; month++) {
+        labels.push(monthLabel(addMonths(lastDate, month)));
+        actual.push(null);
+        projected.push(projectedAt(month));
     }
 
     const ctx = document.getElementById('forecastChart').getContext('2d');
@@ -1415,8 +1421,16 @@ function updateForecastChart(forecasts) {
         data: {
             labels: labels,
             datasets: [{
-                label: 'Projected Net Worth',
-                data: data,
+                label: 'Actual',
+                data: actual,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true
+            }, {
+                label: 'Projected',
+                data: projected,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 borderWidth: 3,
@@ -1427,16 +1441,18 @@ function updateForecastChart(forecasts) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             animation: false,
             plugins: {
                 legend: {
-                    display: false
+                    display: true,
+                    position: 'top',
+                    labels: { usePointStyle: true, boxHeight: 6 }
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `£${formatCurrency(context.parsed.y)}`;
+                            return `${context.dataset.label}: £${formatCurrency(context.parsed.y)}`;
                         }
                     }
                 }

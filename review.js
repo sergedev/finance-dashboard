@@ -5,7 +5,10 @@
  * Mounted by both pages — the import page (sync.html) and the dashboard
  * (index.html) — so there is exactly one implementation of the review UI.
  *
- *   Review.mount(rootElement)          inject the markup
+ *   Review.mount(rootElement, opts)    inject the markup; opts.defaultTab picks
+ *                                      the tab shown on load ('needs' default)
+ *   Review.mountBreakdown(element)     render the breakdown grid into its own
+ *                                      element instead of as a tab (optional)
  *   Review.load(model, filename)       take a parsed workbook and render
  *   Review.model()                     the live model, for the import splice
  *   Review.applyImport({...})          append imported rows and switch to them
@@ -32,6 +35,7 @@ const Review = (function () {
         expandedCat: null,    // category names whose transactions are shown
         search: '',
         breakdownUnit: 'month',   // 'month' | 'year'
+        bdSearch: '',             // breakdown's own filter when separately hosted
         sort: { tx: null, rules: null, categories: null, breakdown: null },
         dirty: false,
         editing: null,        // { txIndex, ruleIndex, existing, mode }
@@ -39,9 +43,16 @@ const Review = (function () {
     };
 
     let root = null;
+    let bdRoot = null;          // optional separate host for the breakdown grid
+    let defaultTab = 'needs';   // tab shown on load, and fallen back to
     let changeHandlers = [];
 
-    const $ = function (id) { return root.querySelector('#' + id); };
+    const $ = function (id) {
+        return (root && root.querySelector('#' + id)) ||
+               (bdRoot && bdRoot.querySelector('#' + id)) || null;
+    };
+
+    const breakdownIsSeparate = function () { return !!bdRoot; };
 
     function money(n) {
         if (n === null || n === undefined || isNaN(n)) return '';
@@ -196,13 +207,14 @@ const Review = (function () {
 
     function render() {
         const c = counts();
+        if (breakdownIsSeparate() && state.filter === 'breakdown') state.filter = defaultTab;
         $('tabs').innerHTML = [
             tab('needs', 'Needs you', c.needs),
             c.batch ? tab('batch', 'This import', c.batch) : '',
             tab('all', 'Everything', c.all),
             tab('rules', 'Rules', state.model.rules.length),
             tab('categories', 'Categories', categorySummary().length),
-            tab('breakdown', 'Breakdown', '')
+            breakdownIsSeparate() ? '' : tab('breakdown', 'Breakdown', '')
         ].join('');
         Array.prototype.forEach.call(root.querySelectorAll('.tab'), function (el) {
             el.addEventListener('click', function () {
@@ -216,7 +228,7 @@ const Review = (function () {
             return isFlagged(i) && state.results[i].rule && !state.results[i].conflict;
         }).length;
 
-        if (state.filter === 'breakdown') {
+        if (state.filter === 'breakdown' && !breakdownIsSeparate()) {
             $('reviewStats').innerHTML =
                 '<div class="tabs small">' +
                     '<button class="tab' + (state.breakdownUnit === 'month' ? ' on' : '') +
@@ -251,6 +263,28 @@ const Review = (function () {
         }
         renderHealth();
         renderCategoryList();
+        if (breakdownIsSeparate()) renderBreakdownHost();
+    }
+
+    /** Draw the separately hosted breakdown: unit toggle, filter, grid. */
+    function renderBreakdownHost() {
+        const sec = $('breakdownSection');
+        if (!sec) return;
+        sec.hidden = !state.model;
+        if (!state.model) return;
+
+        $('bdUnits').innerHTML =
+            '<button class="tab' + (state.breakdownUnit === 'month' ? ' on' : '') +
+                '" data-bunit="month">Months</button>' +
+            '<button class="tab' + (state.breakdownUnit === 'year' ? ' on' : '') +
+                '" data-bunit="year">Years</button>';
+        Array.prototype.forEach.call(bdRoot.querySelectorAll('[data-bunit]'), function (b) {
+            b.addEventListener('click', function () {
+                state.breakdownUnit = b.dataset.bunit;
+                render();
+            });
+        });
+        renderBreakdown();
     }
 
     function tab(key, label, n) {
@@ -715,8 +749,18 @@ const Review = (function () {
             row.indexes.push(i);
         });
 
+        // target ids depend on whether the grid is a tab or its own section
+        const sep = breakdownIsSeparate();
+        const HEAD = sep ? 'bdHead' : 'txHead';
+        const BODY = sep ? 'bdBody' : 'txBody';
+        const EMPTY = sep ? 'bdEmpty' : 'emptyNote';
+        const query = sep ? state.bdSearch : state.search;
+
         let all = Array.from(rows.values());
-        if (state.search) all = all.filter(function (r) { return matchesSearch(r.name); });
+        if (query) {
+            const q = query.toUpperCase();
+            all = all.filter(function (r) { return String(r.name).toUpperCase().indexOf(q) !== -1; });
+        }
 
         // income and transfers sit below a divider: they would otherwise dominate
         // the shading and read oddly among the spending rows
@@ -728,7 +772,7 @@ const Review = (function () {
         const income = all.filter(isIncomeLike)
             .sort(function (a, b) { return b.total - a.total; });
 
-        $('txHead').innerHTML = '<tr>' +
+        $(HEAD).innerHTML = '<tr>' +
             sortHeader('breakdown', 'name', 'Category') +
             periods.map(function (p) {
                 return sortHeader('breakdown', 'p:' + p, esc(periodLabel(p)), 'r');
@@ -805,16 +849,16 @@ const Review = (function () {
             : '';
 
         if (!all.length) {
-            $('txBody').innerHTML = '';
-            $('emptyNote').hidden = false;
-            $('emptyNote').textContent = 'No categories match "' + state.search + '".';
+            $(BODY).innerHTML = '';
+            $(EMPTY).hidden = false;
+            $(EMPTY).textContent = 'No categories match "' + query + '".';
             return;
         }
-        $('emptyNote').hidden = true;
-        $('txBody').innerHTML = ordered(spending).map(renderRow).join('') +
+        $(EMPTY).hidden = true;
+        $(BODY).innerHTML = ordered(spending).map(renderRow).join('') +
             divider + ordered(income).map(renderRow).join('');
 
-        Array.prototype.forEach.call($('txBody').querySelectorAll('[data-cat-row]'), function (row) {
+        Array.prototype.forEach.call($(BODY).querySelectorAll('[data-cat-row]'), function (row) {
             row.addEventListener('click', function () {
                 const name = row.dataset.catRow;
                 if (state.expandedCat.has(name)) state.expandedCat.delete(name);
@@ -1302,10 +1346,42 @@ const Review = (function () {
         '</div>'
     ].join('\n');
 
+    /** Standalone breakdown host: same head/table shape as the review panel. */
+    const BREAKDOWN_MARKUP = [
+        '<section class="review breakdown-panel" id="breakdownSection" hidden>',
+        '  <div class="review-head">',
+        '    <div class="tabs" id="bdUnits"></div>',
+        '    <div class="review-tools">',
+        '      <input type="search" id="bdSearchBox" placeholder="Filter categories…" autocomplete="off">',
+        '    </div>',
+        '  </div>',
+        '  <div class="table-scroll">',
+        '    <table class="tx"><thead id="bdHead"></thead><tbody id="bdBody"></tbody></table>',
+        '  </div>',
+        '  <p class="empty" id="bdEmpty" hidden></p>',
+        '</section>'
+    ].join('\n');
+
     // ------------------------------------------------------------------ api
 
-    function mount(rootElement) {
+    /**
+     * Render the category x period grid into its own element instead of as a
+     * tab. Optional: pages that don't call this keep the tab.
+     */
+    function mountBreakdown(element) {
+        bdRoot = element;
+        bdRoot.innerHTML = BREAKDOWN_MARKUP;
+        $('bdSearchBox').addEventListener('input', function () {
+            state.bdSearch = $('bdSearchBox').value.trim();
+            renderBreakdownHost();
+        });
+        if (state.model) render();
+    }
+
+    function mount(rootElement, options) {
         root = rootElement;
+        if (options && options.defaultTab) defaultTab = options.defaultTab;
+        state.filter = defaultTab;
         root.innerHTML = MARKUP;
 
         ['ruleMatch', 'ruleType', 'ruleCategory', 'ruleScope'].forEach(function (id) {
@@ -1348,7 +1424,7 @@ const Review = (function () {
         state.expandedCat = new Set();
         state.batchFrom = undefined;
         state.importLog = null;
-        state.filter = 'needs';
+        state.filter = defaultTab;
         state.search = '';
         state.dirty = false;
 
@@ -1396,6 +1472,7 @@ const Review = (function () {
 
     return {
         mount: mount,
+        mountBreakdown: mountBreakdown,
         load: load,
         model: function () { return state.model; },
         applyImport: applyImport,

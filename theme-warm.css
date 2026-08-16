@@ -1,0 +1,65 @@
+/* Warm — amber accent matching the favicon, borderless panels on warm paper,
+   larger figures. Token set as theme-panel.css. */
+:root {
+    --bg:            #f7f4ee;
+    --surface:       #ffffff;
+    --surface-2:     #efeae1;
+    --border:        #e4ddd0;
+    --border-strong: #cec3af;
+
+    --text:          #241f18;
+    --text-dim:      #554c3f;
+    --text-faint:    #8a7f6f;
+
+    --accent:        #b45309;
+    --accent-ink:    #ffffff;
+    --accent-text:   #a4530b;
+    --pos:           #0f7a52;
+    --neg:           #b3392c;
+
+    --panel-bg:      #fffdf9;
+    --panel-border:  0;
+    --panel-radius:  14px;
+    --panel-pad:     var(--s5);
+    --panel-shadow:  none;
+    --btn-radius:    8px;
+
+    --kpi-bg:        #fffdf9;
+    --kpi-border:    0;
+    --kpi-pad:       var(--s5);
+    --kpi-size:      1.75rem;
+    --kpi-icon-bg:   #f6ead6;
+    --kpi-icon-ink:  #a4530b;
+
+    --th-bg:         #f2ebdf;
+    --th-hover:      #e8dfcd;
+    --row-hover:     #faf6ee;
+
+    --topbar-bg:     #fffdf9;
+    --topbar-ink:    var(--text);
+    --topbar-dim:    var(--text-faint);
+    --topbar-border: transparent;
+
+
+    --head-weight: 650;
+    --head-size:   1.15rem;
+}
+
+/* Hierarchy from weight and the accent rule rather than from boxes. */
+.sec-head {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: var(--s2);
+}
+.sec-head h2 { letter-spacing: -0.02em; }
+
+/* Bigger, tighter figures. */
+.kpi-value { letter-spacing: -0.03em; }
+.kpi-label { text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.68rem; }
+
+/* Separation from surface contrast, not borders. */
+.topbar { border: 0; }
+.seg { background: var(--surface-2); border-color: transparent; }
+
+table.data td { border-bottom-color: var(--border); }
+
+.review-host .review, .review-host .health { padding: var(--s5); }
